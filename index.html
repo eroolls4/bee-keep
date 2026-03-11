@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>BeeKeep — Menaxhimi i Koshereve</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            honey: { 50:'#FFF9ED',100:'#FFF0CC',200:'#FFDF99',300:'#FFCB55',400:'#FFB81C',500:'#F59E0B',600:'#D97706',700:'#B45309',800:'#92400E',900:'#78350F' },
+            bark:  { 50:'#FAF9F7',100:'#F0EEED',200:'#E0DCDA',300:'#C4BFBB',400:'#A09894',500:'#78716C',600:'#57534E',700:'#44403C',800:'#292524',900:'#1C1917' },
+          },
+          fontFamily: { sans: ['DM Sans','system-ui','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+    html,body{font-family:'DM Sans',sans-serif;overscroll-behavior:none}
+    body{padding-bottom:82px;background:#FAF9F7}
+    input,textarea,select{font-family:inherit}
+    .page{display:none;min-height:100dvh}
+    .page.active{display:block}
+    .fade-in{animation:fadeIn .22s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .nav-item.active .nav-dot{background:#F59E0B}
+    .nav-item.active .nav-label{color:#92400E;font-weight:600}
+    .nav-item.active svg:not(.fab-icon){color:#F59E0B}
+    input:focus,textarea:focus,select:focus{outline:none;box-shadow:0 0 0 2px #FFB81C;border-color:#FFB81C}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:#C4BFBB;border-radius:8px}
+    .toggle-track{width:52px;height:30px;border-radius:15px;background:#E0DCDA;position:relative;transition:background .2s;cursor:pointer;flex-shrink:0}
+    .toggle-track.on{background:#FFB81C}
+    .toggle-thumb{width:24px;height:24px;border-radius:12px;background:#fff;position:absolute;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+    .toggle-track.on .toggle-thumb{transform:translateX(22px)}
+    .num-stepper{display:flex;align-items:center;border:1px solid #E0DCDA;border-radius:14px;overflow:hidden;background:#fff}
+    .num-stepper button{width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;font-size:22px;color:#78716C;cursor:pointer;-webkit-user-select:none;user-select:none}
+    .num-stepper button:active{background:#FFF0CC}
+    .num-stepper .num-val{width:44px;text-align:center;font-size:18px;font-weight:700;color:#292524;border-left:1px solid #E0DCDA;border-right:1px solid #E0DCDA}
+    .radio-pill{padding:9px 4px;flex:1;text-align:center;font-size:13px;font-weight:500;border:1.5px solid #E0DCDA;background:#fff;color:#78716C;cursor:pointer;transition:all .15s;border-radius:12px;min-width:0}
+    .radio-pill.on{background:#FFF0CC;color:#92400E;border-color:#FFB81C;font-weight:600}
+    .card{background:#fff;border:1px solid #E0DCDA;border-radius:16px}
+    .section-label{font-size:11px;font-weight:600;color:#A09894;text-transform:uppercase;letter-spacing:.05em}
+    .chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 10px;border-radius:20px;font-weight:500}
+    .attr-type-badge{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600;text-transform:uppercase;letter-spacing:.02em}
+    input[type=range]{height:6px;border-radius:3px;-webkit-appearance:none;appearance:none;background:#E0DCDA;outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:12px;background:#FFB81C;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.15);cursor:pointer}
+  </style>
+</head>
+<body class="text-bark-800">
+<div id="app">
+
+  <!-- ========== PAGE: HIVE LIST ========== -->
+  <div id="page-hives" class="page active">
+    <div class="px-4 pt-6 pb-3">
+      <div class="flex items-center justify-between mb-1">
+        <div><h1 class="text-2xl font-bold text-bark-900 tracking-tight">Kosheret</h1><p class="text-sm text-bark-400 mt-0.5">Menaxho kosheret e tua</p></div>
+        <div class="w-10 h-10 rounded-full bg-honey-100 flex items-center justify-center text-xl">🐝</div>
+      </div>
+    </div>
+    <div class="px-4 mb-3">
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-bark-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="search-hives" type="text" placeholder="Kërko koshere..." class="w-full pl-10 pr-4 py-3 bg-white border border-bark-200 rounded-2xl text-base text-bark-700 placeholder:text-bark-300">
+      </div>
+    </div>
+    <div id="hive-list" class="px-4 space-y-2 pb-4"></div>
+    <div id="empty-hives" class="hidden px-4 pt-12 text-center fade-in">
+      <div class="text-5xl mb-3">🏠</div>
+      <p class="text-bark-400 text-base">Nuk ka koshere ende.</p>
+      <p class="text-bark-300 text-sm mt-1">Shtyp "Shto" për të shtuar një koshere.</p>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: HIVE DETAIL ========== -->
+  <div id="page-detail" class="page">
+    <div class="px-4 pt-5 pb-3 flex items-center gap-3">
+      <button id="btn-back-detail" class="w-10 h-10 rounded-full bg-white border border-bark-200 flex items-center justify-center active:bg-bark-100"><svg class="w-5 h-5 text-bark-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <div class="flex-1 min-w-0">
+        <h2 id="detail-title" class="text-xl font-bold text-bark-900 truncate"></h2>
+        <p id="detail-queen" class="text-sm text-bark-400"></p>
+      </div>
+      <button id="btn-add-report" class="h-10 px-4 bg-honey-400 text-bark-900 font-semibold text-sm rounded-2xl flex items-center gap-1.5 active:bg-honey-500 shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Raport
+      </button>
+    </div>
+    <div id="last-report-card" class="mx-4 mb-4 hidden fade-in">
+      <div class="card p-4">
+        <div class="flex items-center justify-between mb-3"><span class="section-label">Raporti i Fundit</span><span id="last-report-date" class="text-xs text-bark-400"></span></div>
+        <div id="last-report-body" class="space-y-2"></div>
+      </div>
+    </div>
+    <div id="no-reports-msg" class="hidden px-4 pt-8 text-center fade-in"><div class="text-4xl mb-2">📋</div><p class="text-bark-400 text-sm">Nuk ka raporte për këtë koshere.</p></div>
+    <div id="report-history-section" class="px-4 hidden pb-6">
+      <h3 class="section-label mb-2">Historiku i Raporteve</h3>
+      <div class="card overflow-hidden"><div id="report-history-list"></div></div>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: ADD HIVE ========== -->
+  <div id="page-add-hive" class="page">
+    <div class="px-4 pt-5 pb-3 flex items-center gap-3">
+      <button id="btn-back-add-hive" class="w-10 h-10 rounded-full bg-white border border-bark-200 flex items-center justify-center active:bg-bark-100"><svg class="w-5 h-5 text-bark-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <h2 class="text-xl font-bold text-bark-900">Shto Koshere</h2>
+    </div>
+    <div class="px-4 space-y-4 pb-8">
+      <div><label class="block text-sm font-medium text-bark-500 mb-1.5">Numri i Kosheres</label><input id="input-hive-number" type="text" placeholder="p.sh. 1, 2, A1..." class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base"></div>
+      <div><label class="block text-sm font-medium text-bark-500 mb-1.5">Viti i Mbretëreshës</label><input id="input-queen-year" type="number" placeholder="p.sh. 2024" class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base"></div>
+      <div><label class="block text-sm font-medium text-bark-500 mb-1.5">Shënime (opsionale)</label><textarea id="input-hive-notes" rows="3" placeholder="Shënime shtesë..." class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base resize-none"></textarea></div>
+      <button id="btn-save-hive" class="w-full py-3.5 bg-honey-400 text-bark-900 font-bold text-base rounded-2xl active:bg-honey-500 shadow-sm mt-2">Ruaj Kosheren</button>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: ADD REPORT ========== -->
+  <div id="page-add-report" class="page">
+    <div class="px-4 pt-5 pb-3 flex items-center gap-3">
+      <button id="btn-back-add-report" class="w-10 h-10 rounded-full bg-white border border-bark-200 flex items-center justify-center active:bg-bark-100"><svg class="w-5 h-5 text-bark-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <div class="flex-1 min-w-0"><h2 class="text-xl font-bold text-bark-900">Raport i Ri</h2><p id="report-hive-label" class="text-sm text-bark-400"></p></div>
+    </div>
+    <div class="px-4 space-y-3 pb-8">
+      <div><label class="block text-sm font-medium text-bark-500 mb-1.5">Data</label><input id="input-report-date" type="date" class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base"></div>
+      <div id="report-attrs" class="space-y-3"></div>
+      <div><label class="block text-sm font-medium text-bark-500 mb-1.5">Shënime shtesë</label><textarea id="input-report-notes" rows="3" placeholder="Shkruaj shënimet këtu..." class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base resize-none"></textarea></div>
+      <button id="btn-save-report" class="w-full py-3.5 bg-honey-400 text-bark-900 font-bold text-base rounded-2xl active:bg-honey-500 shadow-sm">Ruaj Raportin</button>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: REPORT VIEW ========== -->
+  <div id="page-report-view" class="page">
+    <div class="px-4 pt-5 pb-3 flex items-center gap-3">
+      <button id="btn-back-report-view" class="w-10 h-10 rounded-full bg-white border border-bark-200 flex items-center justify-center active:bg-bark-100"><svg class="w-5 h-5 text-bark-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <div class="flex-1 min-w-0"><h2 class="text-xl font-bold text-bark-900">Detajet e Raportit</h2><p id="report-view-date" class="text-sm text-bark-400"></p></div>
+      <button id="btn-delete-report" class="w-10 h-10 rounded-full bg-red-50 border border-red-200 flex items-center justify-center active:bg-red-100"><svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/></svg></button>
+    </div>
+    <div id="report-view-body" class="px-4 pb-8 space-y-3 fade-in"></div>
+  </div>
+
+  <!-- ========== PAGE: SETTINGS ========== -->
+  <div id="page-settings" class="page">
+    <div class="px-4 pt-6 pb-3">
+      <h1 class="text-2xl font-bold text-bark-900 tracking-tight">Cilësimet</h1>
+      <p class="text-sm text-bark-400 mt-0.5">Menaxho atributet e raportit</p>
+    </div>
+    <div class="px-4 pb-4">
+      <div class="section-label mb-2">Atributet e Raportit</div>
+      <p class="text-xs text-bark-400 mb-3">Këto shfaqen kur krijoni raport të ri. Shtypni për të ndryshuar.</p>
+      <div id="settings-attr-list" class="space-y-2"></div>
+      <button id="btn-add-attr" class="w-full mt-3 py-3 border-2 border-dashed border-bark-300 rounded-2xl text-bark-500 font-semibold text-sm flex items-center justify-center gap-2 active:bg-bark-50">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Shto Atribut të Ri
+      </button>
+    </div>
+    <div class="px-4 pb-8">
+      <button id="btn-reset-data" class="w-full py-3 border border-red-200 text-red-500 font-medium text-sm rounded-2xl active:bg-red-50 mt-4">Fshi të dhënat (Reset)</button>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: EDIT ATTRIBUTE ========== -->
+  <div id="page-edit-attr" class="page">
+    <div class="px-4 pt-5 pb-3 flex items-center gap-3">
+      <button id="btn-back-edit-attr" class="w-10 h-10 rounded-full bg-white border border-bark-200 flex items-center justify-center active:bg-bark-100"><svg class="w-5 h-5 text-bark-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <h2 id="edit-attr-title" class="text-xl font-bold text-bark-900 flex-1">Ndrysho Atributin</h2>
+      <button id="btn-delete-attr" class="w-10 h-10 rounded-full bg-red-50 border border-red-200 flex items-center justify-center active:bg-red-100"><svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/></svg></button>
+    </div>
+    <div class="px-4 space-y-4 pb-8">
+      <div><label class="block text-sm font-medium text-bark-500 mb-1.5">Emri i Atributit</label><input id="edit-attr-label" type="text" placeholder="p.sh. Mbretëresha" class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base"></div>
+      <div>
+        <label class="block text-sm font-medium text-bark-500 mb-2">Lloji i Atributit</label>
+        <div id="edit-attr-type-btns" class="flex gap-2" data-selected="checkbox">
+          <button class="type-btn flex-1 py-3 text-sm rounded-xl border border-bark-200 text-bark-500 font-medium transition-all" data-type="checkbox" onclick="selectAttrType('checkbox')"><div class="text-lg mb-0.5">✓/✗</div>Checkbox</button>
+          <button class="type-btn flex-1 py-3 text-sm rounded-xl border border-bark-200 text-bark-500 font-medium transition-all" data-type="radio" onclick="selectAttrType('radio')"><div class="text-lg mb-0.5">◉</div>Zgjedhje</button>
+          <button class="type-btn flex-1 py-3 text-sm rounded-xl border border-bark-200 text-bark-500 font-medium transition-all" data-type="number" onclick="selectAttrType('number')"><div class="text-lg mb-0.5">123</div>Numërik</button>
+        </div>
+      </div>
+      <div id="edit-checkbox-section" class="hidden space-y-3">
+        <div><label class="block text-sm font-medium text-bark-500 mb-1.5">Etiketa kur është PO</label><input id="edit-cb-label-on" type="text" placeholder="p.sh. E parë, Ka" class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base"></div>
+        <div><label class="block text-sm font-medium text-bark-500 mb-1.5">Etiketa kur është JO</label><input id="edit-cb-label-off" type="text" placeholder="p.sh. Jo e parë, Ska" class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base"></div>
+      </div>
+      <div id="edit-radio-section" class="hidden space-y-3">
+        <label class="block text-sm font-medium text-bark-500">Opsionet</label>
+        <div id="edit-radio-options" class="space-y-2"></div>
+        <button class="w-full py-2.5 border border-dashed border-bark-300 rounded-xl text-bark-500 text-sm font-medium flex items-center justify-center gap-1 active:bg-bark-50" onclick="addRadioOption()">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shto opsion
+        </button>
+      </div>
+      <div id="edit-number-section" class="hidden space-y-3">
+        <div class="flex gap-3">
+          <div class="flex-1"><label class="block text-sm font-medium text-bark-500 mb-1.5">Vlera Minimale</label><input id="edit-num-min" type="number" value="0" class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base"></div>
+          <div class="flex-1"><label class="block text-sm font-medium text-bark-500 mb-1.5">Vlera Maksimale</label><input id="edit-num-max" type="number" value="20" class="w-full px-4 py-3 bg-white border border-bark-200 rounded-2xl text-base"></div>
+        </div>
+      </div>
+      <button id="btn-save-attr" class="w-full py-3.5 bg-honey-400 text-bark-900 font-bold text-base rounded-2xl active:bg-honey-500 shadow-sm mt-2">Ruaj Atributin</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ========== BOTTOM NAV ========== -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-bark-200 z-50">
+  <div class="max-w-lg mx-auto flex items-stretch justify-around pb-[max(4px,env(safe-area-inset-bottom))]">
+    <button class="nav-item active flex flex-col items-center justify-center gap-0.5 flex-1 pt-2 pb-1" data-nav="page-hives">
+      <svg class="w-6 h-6 text-bark-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9.5L12 4l9 5.5M4 10v8a2 2 0 002 2h12a2 2 0 002-2v-8"/></svg>
+      <span class="nav-label text-[11px] text-bark-400">Kosheret</span>
+      <span class="nav-dot w-1 h-1 rounded-full mt-0.5"></span>
+    </button>
+    <button class="nav-item flex flex-col items-center justify-center gap-0.5 flex-1 pt-2 pb-1" data-nav="page-add-report" id="nav-new-report">
+      <div class="w-11 h-11 -mt-5 bg-honey-400 rounded-full flex items-center justify-center shadow-lg border-[3px] border-white">
+        <svg class="fab-icon w-5 h-5 text-bark-900" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+      <span class="nav-label text-[11px] text-bark-400 -mt-0.5">Raport</span>
+    </button>
+    <button class="nav-item flex flex-col items-center justify-center gap-0.5 flex-1 pt-2 pb-1" data-nav="page-add-hive">
+      <svg class="w-6 h-6 text-bark-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
+      <span class="nav-label text-[11px] text-bark-400">Shto</span>
+      <span class="nav-dot w-1 h-1 rounded-full mt-0.5"></span>
+    </button>
+    <button class="nav-item flex flex-col items-center justify-center gap-0.5 flex-1 pt-2 pb-1" data-nav="page-settings">
+      <svg class="w-6 h-6 text-bark-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="nav-label text-[11px] text-bark-400">Cilësimet</span>
+      <span class="nav-dot w-1 h-1 rounded-full mt-0.5"></span>
+    </button>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div id="toast" class="fixed top-4 left-4 right-4 z-[60] pointer-events-none flex justify-center">
+  <div id="toast-inner" class="bg-bark-800 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-lg transform -translate-y-20 transition-transform duration-300"></div>
+</div>
+
+<script>
+  // ===================================================================
+  // DATABASE
+  // ===================================================================
+  const DB = {
+    hives: [], reports: [], attrs: [],
+    _load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    save() {
+      localStorage.setItem('bk_hives', JSON.stringify(this.hives));
+      localStorage.setItem('bk_reports', JSON.stringify(this.reports));
+      localStorage.setItem('bk_attrs', JSON.stringify(this.attrs));
+    },
+    init() {
+      this.hives = this._load('bk_hives') || [];
+      this.reports = this._load('bk_reports') || [];
+      this.attrs = this._load('bk_attrs') || [];
+      if (!this.attrs.length) this.seedDefaults();
+      if (!this.hives.length) this.seedDemo();
+    },
+    seedDefaults() {
+      this.attrs = [
+        { id:'a1', label:'Mbretëresha', type:'checkbox', labelOn:'E parë', labelOff:'Jo e parë', order:0 },
+        { id:'a2', label:'Cilësia e pjelljes', type:'radio', options:['Dobët','Mirë','Shumë mirë'], order:1 },
+        { id:'a3', label:'Kornizë pjellje', type:'number', min:0, max:20, order:2 },
+        { id:'a4', label:'Zhvillimi i shoqërisë', type:'radio', options:['Dobët','Mirë','Shumë mirë','E fortë'], order:3 },
+        { id:'a5', label:'Rrugë mizë', type:'number', min:0, max:20, order:4 },
+        { id:'a6', label:'Polen (kornizë)', type:'number', min:0, max:10, order:5 },
+        { id:'a7', label:'Mjaltë (kornizë)', type:'number', min:0, max:10, order:6 },
+        { id:'a8', label:'Sëmundje', type:'radio', options:['Asnjë','Varroë','Nozemë','Askosferozë'], order:7 },
+        { id:'a9', label:'Lagështia', type:'checkbox', labelOn:'Ka', labelOff:'Ska', order:8 },
+      ];
+      this.save();
+    },
+    seedDemo() {
+      this.hives = [
+        { id:'h1', number:'1', queenYear:2023, notes:'Koshere e vjetër', createdAt:'2024-01-10' },
+        { id:'h2', number:'2', queenYear:2024, notes:'', createdAt:'2024-03-15' },
+        { id:'h3', number:'3', queenYear:2025, notes:'Pranë pemës së mollës', createdAt:'2025-01-20' },
+      ];
+      const mk = (id,hid,date,notes) => ({
+        id, hiveId:hid, date, notes, createdAt:date,
+        attrs: this.attrs.map(a => {
+          if (a.type==='checkbox') return { key:a.id, value:Math.random()>.4 };
+          if (a.type==='radio') return { key:a.id, value:a.options[Math.floor(Math.random()*a.options.length)] };
+          return { key:a.id, value:Math.floor(Math.random()*((a.max||20)-(a.min||0)+1))+(a.min||0) };
+        })
+      });
+      this.reports = [ mk('r1','h1','2025-03-10','Gjithçka në rregull.'), mk('r2','h1','2025-03-08','Pak lagështirë.'), mk('r3','h2','2025-03-09',''), mk('r4','h1','2025-03-05','Nevojitet trajtim.') ];
+      this.save();
+    },
+    reset() { localStorage.removeItem('bk_hives'); localStorage.removeItem('bk_reports'); localStorage.removeItem('bk_attrs'); this.hives=[]; this.reports=[]; this.attrs=[]; this.seedDefaults(); this.seedDemo(); },
+    addHive(n,y,no) { const h={id:'h'+Date.now(),number:n,queenYear:y,notes:no,createdAt:todayStr()}; this.hives.unshift(h); this.save(); return h; },
+    addReport(hid,date,attrs,notes) { const r={id:'r'+Date.now(),hiveId:hid,date,attrs,notes,createdAt:todayStr()}; this.reports.unshift(r); this.save(); return r; },
+    deleteReport(id) { this.reports=this.reports.filter(r=>r.id!==id); this.save(); },
+    reportsForHive(hid) { return this.reports.filter(r=>r.hiveId===hid).sort((a,b)=>b.date.localeCompare(a.date)); },
+    hive(id) { return this.hives.find(h=>h.id===id); },
+    sortedAttrs() { return [...this.attrs].sort((a,b)=>a.order-b.order); },
+    attr(id) { return this.attrs.find(a=>a.id===id); },
+    saveAttr(a) { const i=this.attrs.findIndex(x=>x.id===a.id); if(i>=0) this.attrs[i]=a; else this.attrs.push(a); this.save(); },
+    deleteAttr(id) { this.attrs=this.attrs.filter(a=>a.id!==id); this.save(); },
+  };
+
+  // ===================================================================
+  // HELPERS
+  // ===================================================================
+  const todayStr = () => new Date().toISOString().split('T')[0];
+  const fmtDate = d => { try{const p=d.split('-');return`${p[2]}/${p[1]}/${p[0]}`}catch{return d} };
+  const fmtDateShort = d => { try{const p=d.split('-');return`${p[2]}/${p[1]}`}catch{return d} };
+  const esc = s => { const d=document.createElement('div');d.textContent=s;return d.innerHTML };
+  const clamp = (v,mn,mx) => Math.max(mn,Math.min(mx,v));
+
+  function toast(msg) {
+    const el=document.getElementById('toast-inner');
+    el.textContent=msg; el.style.transform='translateY(0)';
+    clearTimeout(el._t); el._t=setTimeout(()=>{el.style.transform='translateY(-80px)'},2200);
+  }
+
+  // ===================================================================
+  // NAVIGATION
+  // ===================================================================
+  let currentHiveId=null, currentReportId=null, editingAttrId=null;
+
+  function navigate(pageId) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    const pg=document.getElementById(pageId);
+    if(pg){pg.classList.add('active');pg.classList.remove('fade-in');void pg.offsetWidth;pg.classList.add('fade-in')}
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    const nb=document.querySelector(`.nav-item[data-nav="${pageId}"]`);
+    if(nb) nb.classList.add('active');
+    window.scrollTo(0,0);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const p=btn.dataset.nav;
+      if(p==='page-add-report'){openAddReport(currentHiveId);return}
+      if(p==='page-settings') renderSettingsAttrs();
+      if(p==='page-hives') renderHiveList();
+      navigate(p);
+    });
+  });
+
+  // ===================================================================
+  // HIVE LIST
+  // ===================================================================
+  function renderHiveList(filter) {
+    filter=filter||document.getElementById('search-hives').value||'';
+    const list=document.getElementById('hive-list'), empty=document.getElementById('empty-hives');
+    const f=DB.hives.filter(h=>h.number.toLowerCase().includes(filter.toLowerCase()));
+    if(!f.length){list.innerHTML='';empty.classList.remove('hidden');return}
+    empty.classList.add('hidden');
+    list.innerHTML=f.map(h=>{
+      const reps=DB.reportsForHive(h.id);
+      const ld=reps.length?fmtDate(reps[0].date):'Pa raporte';
+      return`<button class="w-full card p-4 flex items-center gap-3 active:bg-bark-50 text-left" onclick="openHiveDetail('${h.id}')">
+      <div class="w-11 h-11 rounded-xl bg-honey-100 flex items-center justify-center flex-shrink-0"><span class="text-lg font-bold text-honey-700">${esc(h.number)}</span></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2"><span class="font-semibold text-bark-800">Koshere ${esc(h.number)}</span><span class="text-xs bg-honey-50 text-honey-700 px-2 py-0.5 rounded-full font-medium">♛ ${h.queenYear}</span></div>
+        <p class="text-sm text-bark-400 mt-0.5">${ld} · ${reps.length} raporte</p>
+      </div>
+      <svg class="w-5 h-5 text-bark-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+    </button>`;
+    }).join('');
+  }
+  document.getElementById('search-hives').addEventListener('input',e=>renderHiveList(e.target.value));
+
+  // ===================================================================
+  // HIVE DETAIL
+  // ===================================================================
+  function openHiveDetail(hiveId) {
+    currentHiveId=hiveId;
+    const hive=DB.hive(hiveId); if(!hive)return;
+    document.getElementById('detail-title').textContent='Koshere '+hive.number;
+    document.getElementById('detail-queen').textContent='Mbretëresha: '+hive.queenYear;
+    const reps=DB.reportsForHive(hiveId);
+    const lc=document.getElementById('last-report-card'), nm=document.getElementById('no-reports-msg'), hs=document.getElementById('report-history-section');
+    if(!reps.length){lc.classList.add('hidden');nm.classList.remove('hidden');hs.classList.add('hidden')}
+    else{
+      nm.classList.add('hidden');lc.classList.remove('hidden');hs.classList.remove('hidden');
+      const last=reps[0];
+      document.getElementById('last-report-date').textContent=fmtDate(last.date);
+      let body=renderAttrPills(last.attrs);
+      if(last.notes) body+=`<p class="text-sm text-bark-500 mt-2 italic">"${esc(last.notes)}"</p>`;
+      document.getElementById('last-report-body').innerHTML=body;
+      document.getElementById('report-history-list').innerHTML=reps.map((r,i)=>`
+      <button class="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-bark-50 ${i<reps.length-1?'border-b border-bark-100':''}" onclick="openReportView('${r.id}')">
+        <div class="w-9 h-9 rounded-lg bg-honey-50 flex items-center justify-center flex-shrink-0"><span class="text-xs font-bold text-honey-600">${fmtDateShort(r.date)}</span></div>
+        <div class="flex-1 min-w-0"><p class="text-sm font-medium text-bark-700">${fmtDate(r.date)}</p><p class="text-xs text-bark-400 truncate">${r.notes||'Pa shënime'}</p></div>
+        <svg class="w-4 h-4 text-bark-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+      </button>`).join('');
+    }
+    navigate('page-detail');
+  }
+
+  // ===================================================================
+  // ATTR DISPLAY HELPERS
+  // ===================================================================
+  function renderAttrPills(attrs) {
+    return`<div class="flex flex-wrap gap-1.5">${DB.sortedAttrs().map(def=>{
+      const s=attrs.find(a=>a.key===def.id); if(!s) return'';
+      if(def.type==='checkbox') return s.value?`<span class="chip bg-green-50 text-green-700">✓ ${esc(def.labelOn||def.label)}</span>`:`<span class="chip bg-bark-100 text-bark-400">✗ ${esc(def.labelOff||def.label)}</span>`;
+      if(def.type==='number') return`<span class="chip bg-honey-50 text-honey-700">${esc(def.label)}: ${s.value}</span>`;
+      if(def.type==='radio') return s.value?`<span class="chip bg-honey-50 text-honey-700">${esc(def.label)}: ${esc(s.value)}</span>`:'';
+      return'';
+    }).join('')}</div>`;
+  }
+
+  function renderAttrRows(attrs) {
+    return DB.sortedAttrs().map(def=>{
+      const s=attrs.find(a=>a.key===def.id); if(!s) return'';
+      let val='—';
+      if(def.type==='checkbox') val=s.value?(def.labelOn||'Po'):(def.labelOff||'Jo');
+      else if(def.type==='number') val=String(s.value);
+      else if(def.type==='radio') val=s.value||'—';
+      const color=def.type==='checkbox'?(s.value?'text-green-600':'text-bark-300'):'text-honey-700';
+      return`<div class="flex items-center justify-between py-2.5"><span class="text-sm text-bark-600">${esc(def.label)}</span><span class="text-sm font-semibold ${color}">${esc(val)}</span></div>`;
+    }).filter(Boolean).join('<div class="border-b border-bark-100"></div>');
+  }
+
+  // ===================================================================
+  // ADD REPORT
+  // ===================================================================
+  function openAddReport(hiveId) {
+    if(!hiveId&&!currentHiveId){toast('Zgjidhni një koshere fillimisht');navigate('page-hives');return}
+    const id=hiveId||currentHiveId; currentHiveId=id;
+    const hive=DB.hive(id); if(!hive)return;
+    document.getElementById('report-hive-label').textContent='Koshere '+hive.number;
+    document.getElementById('input-report-date').value=todayStr();
+    document.getElementById('input-report-notes').value='';
+
+    const div=document.getElementById('report-attrs');
+    div.innerHTML=DB.sortedAttrs().map(a=>{
+      if(a.type==='checkbox'){
+        return`<div class="card p-4"><div class="flex items-center justify-between">
+        <div><span class="text-sm font-medium text-bark-700">${esc(a.label)}</span><span class="block text-xs text-bark-400 mt-0.5">${esc(a.labelOff||'Jo')} / ${esc(a.labelOn||'Po')}</span></div>
+        <div class="toggle-track" data-attr="${a.id}" data-type="checkbox" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div>
+      </div></div>`;
+      }
+      if(a.type==='number'){
+        const mn=a.min??0, mx=a.max??20;
+        return`<div class="card p-4">
+        <div class="flex items-center justify-between mb-2"><span class="text-sm font-medium text-bark-700">${esc(a.label)}</span><span class="text-xs text-bark-400">${mn} – ${mx}</span></div>
+        <div class="flex items-center gap-3">
+          <div class="num-stepper" data-attr="${a.id}" data-type="number" data-min="${mn}" data-max="${mx}">
+            <button onclick="stepNum(this,-1)" type="button">−</button>
+            <span class="num-val">${mn}</span>
+            <button onclick="stepNum(this,1)" type="button">+</button>
+          </div>
+          <input type="range" min="${mn}" max="${mx}" value="${mn}" class="flex-[2] h-2" oninput="syncSlider(this,'${a.id}')">
+        </div>
+      </div>`;
+      }
+      if(a.type==='radio'){
+        return`<div class="card p-4">
+        <span class="block text-sm font-medium text-bark-700 mb-2.5">${esc(a.label)}</span>
+        <div class="flex gap-1.5 flex-wrap" data-attr="${a.id}" data-type="radio">
+          ${(a.options||[]).map(o=>`<button type="button" class="radio-pill" onclick="selRadio(this)" data-value="${esc(o)}">${esc(o)}</button>`).join('')}
+        </div>
+      </div>`;
+      }
+      return'';
+    }).join('');
+    navigate('page-add-report');
+  }
+
+  function stepNum(btn,dir) {
+    const st=btn.closest('.num-stepper'), vs=st.querySelector('.num-val');
+    const mn=+st.dataset.min, mx=+st.dataset.max;
+    let v=clamp(parseInt(vs.textContent)+dir,mn,mx);
+    vs.textContent=v;
+    const sl=st.closest('.card').querySelector('input[type=range]');
+    if(sl) sl.value=v;
+  }
+  function syncSlider(sl,aid) {
+    const vs=sl.closest('.card').querySelector('.num-val');
+    vs.textContent=sl.value;
+  }
+  function selRadio(btn) {
+    btn.parentElement.querySelectorAll('.radio-pill').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  }
+
+  // ===================================================================
+  // REPORT VIEW
+  // ===================================================================
+  function openReportView(rid) {
+    const r=DB.reports.find(x=>x.id===rid); if(!r) return;
+    currentReportId=rid;
+    const h=DB.hive(r.hiveId);
+    document.getElementById('report-view-date').textContent=(h?'Koshere '+h.number+' · ':'')+fmtDate(r.date);
+    document.getElementById('report-view-body').innerHTML=`
+    <div class="card p-4 space-y-1">${renderAttrRows(r.attrs)}</div>
+    ${r.notes?`<div class="card p-4"><span class="block section-label mb-1.5">Shënime</span><p class="text-sm text-bark-600 leading-relaxed">${esc(r.notes)}</p></div>`:''}`;
+    navigate('page-report-view');
+  }
+
+  // ===================================================================
+  // SETTINGS
+  // ===================================================================
+  function renderSettingsAttrs() {
+    const sorted=DB.sortedAttrs();
+    document.getElementById('settings-attr-list').innerHTML=sorted.map((a,i)=>{
+      const tc={checkbox:'bg-green-50 text-green-700',radio:'bg-blue-50 text-blue-700',number:'bg-honey-50 text-honey-700'};
+      const tl={checkbox:'Checkbox',radio:'Zgjedhje',number:'Numërik'};
+      let det='';
+      if(a.type==='checkbox') det=`${a.labelOn||'Po'} / ${a.labelOff||'Jo'}`;
+      if(a.type==='radio') det=(a.options||[]).join(', ');
+      if(a.type==='number') det=`${a.min??0} – ${a.max??20}`;
+      return`<button class="w-full card p-4 flex items-center gap-3 active:bg-bark-50 text-left" onclick="openEditAttr('${a.id}')">
+      <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-bark-100 flex items-center justify-center text-xs font-bold text-bark-500">${i+1}</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-0.5"><span class="font-semibold text-bark-800 text-sm">${esc(a.label)}</span><span class="attr-type-badge ${tc[a.type]||''}">${tl[a.type]||a.type}</span></div>
+        <p class="text-xs text-bark-400 truncate">${esc(det)}</p>
+      </div>
+      <svg class="w-4 h-4 text-bark-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+    </button>`;
+    }).join('');
+  }
+
+  // ===================================================================
+  // EDIT ATTRIBUTE
+  // ===================================================================
+  let editRadioOpts=[];
+
+  function openEditAttr(attrId) {
+    editingAttrId=attrId;
+    const isNew=!attrId;
+    const a=isNew?{id:'a'+Date.now(),label:'',type:'checkbox',labelOn:'Po',labelOff:'Jo',options:[],min:0,max:20,order:DB.attrs.length}:{...DB.attr(attrId)};
+    document.getElementById('edit-attr-title').textContent=isNew?'Atribut i Ri':'Ndrysho Atributin';
+    document.getElementById('btn-delete-attr').style.display=isNew?'none':'flex';
+    document.getElementById('edit-attr-label').value=a.label;
+    document.getElementById('edit-cb-label-on').value=a.labelOn||'Po';
+    document.getElementById('edit-cb-label-off').value=a.labelOff||'Jo';
+    document.getElementById('edit-num-min').value=a.min??0;
+    document.getElementById('edit-num-max').value=a.max??20;
+    editRadioOpts=[...(a.options||[])];
+    renderRadioOptsEditor();
+    selectAttrType(a.type);
+    navigate('page-edit-attr');
+  }
+
+  function selectAttrType(t) {
+    document.querySelectorAll('.type-btn').forEach(b=>{b.classList.remove('bg-honey-100','border-honey-400','text-honey-800');b.classList.add('border-bark-200','text-bark-500')});
+    const ac=document.querySelector(`.type-btn[data-type="${t}"]`);
+    if(ac){ac.classList.add('bg-honey-100','border-honey-400','text-honey-800');ac.classList.remove('border-bark-200','text-bark-500')}
+    document.getElementById('edit-checkbox-section').classList.toggle('hidden',t!=='checkbox');
+    document.getElementById('edit-radio-section').classList.toggle('hidden',t!=='radio');
+    document.getElementById('edit-number-section').classList.toggle('hidden',t!=='number');
+    document.getElementById('edit-attr-type-btns').dataset.selected=t;
+  }
+
+  function renderRadioOptsEditor() {
+    document.getElementById('edit-radio-options').innerHTML=editRadioOpts.map((o,i)=>`
+    <div class="flex items-center gap-2">
+      <input type="text" value="${esc(o)}" class="flex-1 px-3 py-2.5 bg-white border border-bark-200 rounded-xl text-sm" onchange="editRadioOpts[${i}]=this.value">
+      <button class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 active:bg-red-100" onclick="editRadioOpts.splice(${i},1);renderRadioOptsEditor()">
+        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>`).join('');
+  }
+
+  function addRadioOption() {
+    editRadioOpts.push('');
+    renderRadioOptsEditor();
+    const inputs=document.querySelectorAll('#edit-radio-options input');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  }
+
+  // Save attr
+  document.getElementById('btn-save-attr').addEventListener('click',()=>{
+    const label=document.getElementById('edit-attr-label').value.trim();
+    if(!label){toast('Shkruaj emrin e atributit');return}
+    const type=document.getElementById('edit-attr-type-btns').dataset.selected||'checkbox';
+    const existing=DB.attr(editingAttrId);
+    const attr={id:editingAttrId||'a'+Date.now(),label,type,order:existing?existing.order:DB.attrs.length};
+    if(type==='checkbox'){attr.labelOn=document.getElementById('edit-cb-label-on').value.trim()||'Po';attr.labelOff=document.getElementById('edit-cb-label-off').value.trim()||'Jo'}
+    if(type==='radio'){const ins=document.querySelectorAll('#edit-radio-options input');editRadioOpts=Array.from(ins).map(i=>i.value.trim()).filter(Boolean);attr.options=editRadioOpts}
+    if(type==='number'){attr.min=parseInt(document.getElementById('edit-num-min').value)||0;attr.max=parseInt(document.getElementById('edit-num-max').value)||20}
+    DB.saveAttr(attr);
+    toast('Atributi u ruajt!');
+    renderSettingsAttrs();
+    navigate('page-settings');
+  });
+
+  document.getElementById('btn-delete-attr').addEventListener('click',()=>{
+    if(!editingAttrId)return;
+    if(confirm('Fshij këtë atribut?')){DB.deleteAttr(editingAttrId);editingAttrId=null;toast('Atributi u fshi');renderSettingsAttrs();navigate('page-settings')}
+  });
+
+  document.getElementById('btn-add-attr').addEventListener('click',()=>{editingAttrId=null;openEditAttr(null)});
+  document.getElementById('btn-back-edit-attr').addEventListener('click',()=>{renderSettingsAttrs();navigate('page-settings')});
+
+  // ===================================================================
+  // BACK BUTTONS & SAVES
+  // ===================================================================
+  document.getElementById('btn-back-detail').addEventListener('click',()=>{navigate('page-hives');renderHiveList()});
+  document.getElementById('btn-back-add-hive').addEventListener('click',()=>{navigate('page-hives');renderHiveList()});
+  document.getElementById('btn-back-add-report').addEventListener('click',()=>{if(currentHiveId)openHiveDetail(currentHiveId);else navigate('page-hives')});
+  document.getElementById('btn-back-report-view').addEventListener('click',()=>{if(currentHiveId)openHiveDetail(currentHiveId);else navigate('page-hives')});
+  document.getElementById('btn-add-report').addEventListener('click',()=>openAddReport(currentHiveId));
+
+  document.getElementById('btn-save-hive').addEventListener('click',()=>{
+    const n=document.getElementById('input-hive-number').value.trim();
+    const y=parseInt(document.getElementById('input-queen-year').value);
+    const no=document.getElementById('input-hive-notes').value.trim();
+    if(!n){toast('Shkruaj numrin e kosheres');return}
+    if(!y||y<1990||y>2100){toast('Shkruaj vitin e saktë');return}
+    DB.addHive(n,y,no);
+    document.getElementById('input-hive-number').value='';
+    document.getElementById('input-queen-year').value='';
+    document.getElementById('input-hive-notes').value='';
+    toast('Kosherja u shtua!');navigate('page-hives');renderHiveList();
+  });
+
+  document.getElementById('btn-save-report').addEventListener('click',()=>{
+    const date=document.getElementById('input-report-date').value;
+    const notes=document.getElementById('input-report-notes').value.trim();
+    if(!date){toast('Zgjidhni datën');return}
+    if(!currentHiveId){toast('Asnjë koshere e zgjedhur');return}
+    const attrs=DB.sortedAttrs().map(a=>{
+      if(a.type==='checkbox'){const el=document.querySelector(`.toggle-track[data-attr="${a.id}"]`);return{key:a.id,value:el?el.classList.contains('on'):false}}
+      if(a.type==='number'){const st=document.querySelector(`.num-stepper[data-attr="${a.id}"]`);return{key:a.id,value:st?parseInt(st.querySelector('.num-val').textContent):0}}
+      if(a.type==='radio'){const g=document.querySelector(`[data-attr="${a.id}"][data-type="radio"]`);const s=g?g.querySelector('.radio-pill.on'):null;return{key:a.id,value:s?s.dataset.value:''}}
+      return{key:a.id,value:null};
+    });
+    DB.addReport(currentHiveId,date,attrs,notes);
+    toast('Raporti u ruajt!');
+    openHiveDetail(currentHiveId);
+  });
+
+  document.getElementById('btn-delete-report').addEventListener('click',()=>{
+    if(!currentReportId)return;
+    if(confirm('Fshij këtë raport?')){DB.deleteReport(currentReportId);currentReportId=null;toast('Raporti u fshi');if(currentHiveId)openHiveDetail(currentHiveId);else navigate('page-hives')}
+  });
+
+  document.getElementById('btn-reset-data').addEventListener('click',()=>{
+    if(confirm('Kjo do të fshijë të gjitha të dhënat. Jeni i sigurt?')){DB.reset();toast('Të dhënat u fshinë');renderHiveList();renderSettingsAttrs();navigate('page-hives')}
+  });
+
+  // ===================================================================
+  // INIT
+  // ===================================================================
+  DB.init();
+  renderHiveList();
+</script>
+</body>
+</html>
