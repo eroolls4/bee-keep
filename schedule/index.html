@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BeeWell — Api Terapi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        honey: { 50:'#FFF9EB', 100:'#FFF0C7', 200:'#FFE08A', 300:'#FFCC4D', 400:'#F5B520', 500:'#D9960A', 600:'#A66F05', 700:'#7A5104', 800:'#4D3303', 900:'#2E1F02' },
+                        warm: { 50:'#FDFAF6', 100:'#F9F3EA', 200:'#F0E4D0', 300:'#E2CEB0', 400:'#C4A67A', 500:'#A68450', 600:'#8A6A3A', 700:'#6B5030', 800:'#4A3720', 900:'#2F2315' },
+                        sage: { 50:'#F4F7F4', 100:'#E8EFE8', 200:'#D0DFD0', 300:'#A8C0A8', 400:'#7A9E7A', 500:'#5A805A', 600:'#456845', 700:'#355035', 800:'#263826', 900:'#1A281A' },
+                    },
+                    fontFamily: {
+                        display: ['Fraunces', 'serif'],
+                        body: ['DM Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { font-family: 'DM Sans', sans-serif; background: #FDFAF6; overscroll-behavior: none; }
+        .page { display: none; opacity: 0; transform: translateY(12px); transition: opacity 0.35s ease, transform 0.35s ease; }
+        .page.active { display: flex; flex-direction: column; }
+        .page.visible { opacity: 1; transform: translateY(0); }
+
+        .day-btn { transition: all 0.2s ease; }
+        .day-btn.selected { background: #2F2315; color: #FFF9EB; transform: scale(1.05); box-shadow: 0 4px 16px rgba(47,35,21,0.2); }
+        .day-btn.past { opacity: 0.35; pointer-events: none; }
+        .day-btn.has-slots::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; background: #5A805A; border-radius: 50%; }
+
+        .session-card { transition: all 0.25s ease; }
+        .session-card.selected { background: #2F2315 !important; color: #FFF9EB !important; transform: scale(1.02); box-shadow: 0 6px 20px rgba(47,35,21,0.18); }
+        .session-card.reserved { background: #F0E4D0 !important; color: #A68450 !important; pointer-events: none; opacity: 0.65; }
+
+        .bottom-sheet { transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32,0.72,0,1); }
+        .bottom-sheet.open { transform: translateY(0); }
+        .overlay { opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+        .overlay.open { opacity: 1; pointer-events: auto; }
+
+        .nav-item { transition: all 0.2s ease; }
+        .nav-item.active { color: #2F2315; }
+        .nav-item.active .nav-dot { transform: scaleX(1); }
+        .nav-dot { transform: scaleX(0); transition: transform 0.25s ease; }
+
+        .stagger-in > * { opacity: 0; transform: translateY(10px); animation: fadeUp 0.4s ease forwards; }
+        .stagger-in > *:nth-child(1) { animation-delay: 0.05s; }
+        .stagger-in > *:nth-child(2) { animation-delay: 0.1s; }
+        .stagger-in > *:nth-child(3) { animation-delay: 0.12s; }
+        .stagger-in > *:nth-child(4) { animation-delay: 0.16s; }
+        .stagger-in > *:nth-child(5) { animation-delay: 0.2s; }
+        @keyframes fadeUp { to { opacity:1; transform:translateY(0); } }
+
+        .phone-input:focus { outline: none; box-shadow: 0 0 0 3px rgba(90,128,90,0.25); border-color: #5A805A; }
+        .phone-input.error { box-shadow: 0 0 0 3px rgba(220,80,80,0.2); border-color: #dc5050; }
+        .shake { animation: shake 0.4s ease; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-warm-50 text-warm-900 min-h-screen flex flex-col max-w-md mx-auto relative overflow-x-hidden">
+
+<!-- ==================== BOOK PAGE ==================== -->
+<div id="page-book" class="page active min-h-screen pb-24">
+    <header class="px-5 pt-6 pb-4">
+        <div class="flex items-center gap-3 mb-1">
+            <span class="text-2xl">🐝</span>
+            <h1 class="font-display text-2xl font-600 text-warm-900 tracking-tight">API Terapi Pajtimi</h1>
+        </div>
+        <p class="text-warm-500 text-sm ml-11">Rezervoni Seancën Tuaj</p>
+    </header>
+
+    <!-- Step Indicator -->
+    <div class="px-5 mb-5">
+        <div class="flex items-center gap-2">
+            <div id="step1-dot" class="w-8 h-1.5 rounded-full bg-warm-900 transition-all duration-300"></div>
+            <div id="step2-dot" class="w-8 h-1.5 rounded-full bg-warm-200 transition-all duration-300"></div>
+        </div>
+        <p id="step-label" class="text-xs text-warm-400 mt-2 transition-all duration-300">Hapi 1 — Zgjidhni ditën</p>
+    </div>
+
+    <!-- Step 1: Calendar -->
+    <div id="step-calendar" class="px-5 flex-1">
+        <div class="flex items-center justify-between mb-4">
+            <button id="prev-month" class="w-10 h-10 rounded-full bg-warm-100 flex items-center justify-center text-warm-600 hover:bg-warm-200 transition-colors">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4l-6 5 6 5"/></svg>
+            </button>
+            <h2 id="month-title" class="font-display text-lg font-600 text-warm-800"></h2>
+            <button id="next-month" class="w-10 h-10 rounded-full bg-warm-100 flex items-center justify-center text-warm-600 hover:bg-warm-200 transition-colors">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4l6 5-6 5"/></svg>
+            </button>
+        </div>
+        <div class="grid grid-cols-7 mb-2">
+            <span class="text-center text-xs font-500 text-warm-400">Hë</span>
+            <span class="text-center text-xs font-500 text-warm-400">Ma</span>
+            <span class="text-center text-xs font-500 text-warm-400">Më</span>
+            <span class="text-center text-xs font-500 text-warm-400">En</span>
+            <span class="text-center text-xs font-500 text-warm-400">Pr</span>
+            <span class="text-center text-xs font-500 text-warm-400">Sh</span>
+            <span class="text-center text-xs font-500 text-warm-400">Di</span>
+        </div>
+        <div id="calendar-grid" class="grid grid-cols-7 gap-1.5 stagger-in"></div>
+
+        <div class="mt-5 flex items-start gap-3 bg-honey-50 border border-honey-200 rounded-2xl p-4">
+            <span class="text-xl mt-0.5">🍯</span>
+            <div>
+                <p class="text-sm font-500 text-warm-800">Si funksionon?</p>
+                <p class="text-xs text-warm-500 leading-relaxed mt-1">Zgjidhni ditën kur dëshironi të filloni terapinë. Pastaj zgjidhni orarin e seancës 30-minutëshe. Ne kujdesemi për gjithçka tjetër!</p>
+            </div>
+        </div>
+
+        <div class="mt-4 flex items-center gap-5 px-1">
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-sage-500"></div>
+                <span class="text-[11px] text-warm-400">Ka vende të lira</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full ring-2 ring-honey-400"></div>
+                <span class="text-[11px] text-warm-400">Sot</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Sessions -->
+    <div id="step-sessions" class="px-5 flex-1 hidden">
+        <button id="back-to-cal" class="flex items-center gap-2 text-warm-500 text-sm mb-4 hover:text-warm-700 transition-colors">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3l-5 5 5 5"/></svg>
+            Kthehu te kalendari
+        </button>
+        <div class="mb-2">
+            <h3 id="selected-date-title" class="font-display text-xl font-600 text-warm-800"></h3>
+            <p class="text-sm text-warm-400 mt-0.5">Zgjidhni orarin e seancës tuaj</p>
+        </div>
+        <p class="text-xs text-warm-400 mb-4 flex items-center gap-1.5">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="6"/><path d="M7 4v3.5l2 1.5"/></svg>
+            Çdo seancë zgjat 30 minuta · Orari 17:00 — 19:30
+        </p>
+        <div id="sessions-list" class="space-y-3 stagger-in"></div>
+
+        <div id="confirm-wrap" class="mt-6 hidden">
+            <button id="btn-confirm" class="w-full py-4 bg-warm-900 text-honey-50 font-600 text-base rounded-2xl hover:bg-warm-800 active:scale-[0.98] transition-all duration-200 shadow-lg shadow-warm-900/20">
+                Vazhdo me Rezervim
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== PROFILE PAGE ==================== -->
+<div id="page-profile" class="page min-h-screen pb-24">
+    <header class="px-5 pt-6 pb-2">
+        <h1 class="font-display text-2xl font-600 text-warm-900 tracking-tight">Terminet e Mia</h1>
+        <p class="text-warm-500 text-sm mt-1">Seancat e ardhshme dhe të kaluara</p>
+    </header>
+    <div id="appointments-list" class="px-5 mt-4 space-y-3"></div>
+    <div id="no-appointments" class="px-5 mt-16 text-center hidden">
+        <span class="text-5xl block mb-4">🐝</span>
+        <p class="font-display text-lg text-warm-600">Nuk keni asnjë termin</p>
+        <p class="text-sm text-warm-400 mt-1">Rezervoni seancën e parë për të filluar</p>
+    </div>
+</div>
+
+<!-- ==================== CONFIRM BOTTOM SHEET ==================== -->
+<div id="overlay" class="overlay fixed inset-0 bg-black/40 z-40"></div>
+<div id="bottom-sheet" class="bottom-sheet fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl z-50 shadow-2xl">
+    <div class="w-10 h-1 bg-warm-200 rounded-full mx-auto mt-3"></div>
+    <div class="p-6 pt-5">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-12 h-12 bg-honey-50 rounded-2xl flex items-center justify-center">
+                <span class="text-2xl">🐝</span>
+            </div>
+            <div>
+                <h3 class="font-display text-lg font-600 text-warm-900">Konfirmoni Rezervimin</h3>
+                <p class="text-sm text-warm-400">Vendosni numrin e telefonit për të vazhduar</p>
+            </div>
+        </div>
+
+        <div class="bg-warm-50 rounded-2xl p-4 space-y-3 mb-5">
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-warm-400">Dita</span>
+                <span id="conf-date" class="text-sm font-500 text-warm-800"></span>
+            </div>
+            <div class="h-px bg-warm-200"></div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-warm-400">Ora</span>
+                <span id="conf-time" class="text-sm font-500 text-warm-800"></span>
+            </div>
+            <div class="h-px bg-warm-200"></div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-warm-400">Kohëzgjatja</span>
+                <span class="text-sm font-500 text-warm-800">30 minuta</span>
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <label class="block text-sm font-500 text-warm-700 mb-2" for="phone-input">Numri i telefonit <span class="text-red-400">*</span></label>
+            <div id="phone-wrapper" class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-warm-400 font-500 select-none pointer-events-none">+389</span>
+                <input
+                        id="phone-input"
+                        type="tel"
+                        inputmode="numeric"
+                        maxlength="10"
+                        placeholder="7X XXX XXX"
+                        class="phone-input w-full pl-16 pr-4 py-3.5 bg-warm-50 border-2 border-warm-200 rounded-xl text-base font-500 text-warm-900 placeholder:text-warm-300 transition-all duration-200"
+                >
+            </div>
+            <p id="phone-error" class="text-xs text-red-500 mt-1.5 hidden">Ju lutem shkruani numrin e saktë të telefonit</p>
+            <p class="text-xs text-warm-400 mt-1.5">Do t'ju kontaktojmë në këtë numër për konfirmim</p>
+        </div>
+
+        <button id="sheet-confirm-btn" class="w-full py-3.5 bg-warm-900 text-honey-50 font-600 rounded-2xl hover:bg-warm-800 active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none" disabled>
+            Konfirmo Rezervimin
+        </button>
+        <button id="sheet-cancel-btn" class="w-full py-3 text-warm-400 text-sm font-500 mt-2 hover:text-warm-600 transition-colors">
+            Anulo
+        </button>
+    </div>
+</div>
+
+<!-- ==================== SUCCESS BOTTOM SHEET ==================== -->
+<div id="overlay-success" class="overlay fixed inset-0 bg-black/40 z-40"></div>
+<div id="success-sheet" class="bottom-sheet fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl z-50 shadow-2xl">
+    <div class="w-10 h-1 bg-warm-200 rounded-full mx-auto mt-3"></div>
+    <div class="p-6 pt-5 text-center">
+        <div class="w-16 h-16 bg-sage-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg width="32" height="32" fill="none" stroke="#456845" stroke-width="2.5"><path d="M8 16l6 6 10-12"/></svg>
+        </div>
+        <h3 class="font-display text-xl font-600 text-warm-900 mb-1">Rezervimi u krye me sukses!</h3>
+        <p class="text-sm text-warm-400 mb-5">Seanca juaj është konfirmuar</p>
+
+        <div class="bg-warm-50 rounded-2xl p-4 space-y-3 mb-5 text-left">
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-warm-400">Dita</span>
+                <span id="success-date" class="text-sm font-500 text-warm-800"></span>
+            </div>
+            <div class="h-px bg-warm-200"></div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-warm-400">Ora</span>
+                <span id="success-time" class="text-sm font-500 text-warm-800"></span>
+            </div>
+            <div class="h-px bg-warm-200"></div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-warm-400">Telefoni</span>
+                <span id="success-phone" class="text-sm font-500 text-warm-800"></span>
+            </div>
+            <div class="h-px bg-warm-200"></div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-warm-400">Numri konfirmues</span>
+                <span id="success-code" class="text-base font-700 font-display text-sage-600 tracking-wide"></span>
+            </div>
+        </div>
+
+        <p class="text-xs text-warm-400 mb-4">Tregoni këtë numër kur të vini në termin</p>
+        <button id="success-done-btn" class="w-full py-3.5 bg-warm-900 text-honey-50 font-600 rounded-2xl hover:bg-warm-800 active:scale-[0.98] transition-all">
+            Në rregull
+        </button>
+    </div>
+</div>
+
+<!-- ==================== BOTTOM NAV ==================== -->
+<nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/90 backdrop-blur-xl border-t border-warm-100 z-30">
+    <div class="flex items-center justify-around py-2 pb-3">
+        <button onclick="navigate('book')" class="nav-item active flex flex-col items-center gap-0.5 px-6 py-1" data-nav="book">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+            <span class="text-[11px] font-500">Rezervo</span>
+            <div class="nav-dot w-5 h-0.5 bg-warm-900 rounded-full mt-0.5"></div>
+        </button>
+        <button onclick="navigate('profile')" class="nav-item flex flex-col items-center gap-0.5 px-6 py-1" data-nav="profile">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4.5"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="text-[11px] font-500">Profili</span>
+            <div class="nav-dot w-5 h-0.5 bg-warm-900 rounded-full mt-0.5"></div>
+        </button>
+    </div>
+</nav>
+
+<script>
+    // ===================== SESSION SCHEDULE =====================
+    const SESSIONS = [
+        { index: 0, start: '17:00', end: '17:30' },
+        { index: 1, start: '17:30', end: '18:00' },
+        { index: 2, start: '18:00', end: '18:30' },
+        { index: 3, start: '18:30', end: '19:00' },
+        { index: 4, start: '19:00', end: '19:30' },
+    ];
+
+    // ===================== IN-MEMORY DATABASE =====================
+    const DB = {
+        SLOTS_PER_DAY: 6,
+        TOTAL_SESSIONS: 5,
+
+        appointments: [],
+
+        // "dateKey:sessionIndex" -> number of slots booked for that session
+        _slotCounts: new Map(),
+
+        reservedCountForSession(dateKey, sessionIndex) {
+            return this._slotCounts.get(`${dateKey}:${sessionIndex}`) || 0;
+        },
+
+        isSessionFull(dateKey, sessionIndex) {
+            return this.reservedCountForSession(dateKey, sessionIndex) >= this.SLOTS_PER_DAY;
+        },
+
+        availableCount(dateKey) {
+            let count = 0;
+            for (let i = 0; i < this.TOTAL_SESSIONS; i++) {
+                if (!this.isSessionFull(dateKey, i)) count++;
+            }
+            return count;
+        },
+
+        book(dateKey, sessionIndex, phone) {
+            const slotKey = `${dateKey}:${sessionIndex}`;
+            this._slotCounts.set(slotKey, (this._slotCounts.get(slotKey) || 0) + 1);
+
+            const code = 'BW-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const apt = {
+                id: Math.random().toString(36).substring(2),
+                date: dateKey,
+                sessionIndex,
+                time: SESSIONS[sessionIndex].start,
+                phone: '+389 ' + phone,
+                confirmationCode: code,
+            };
+            this.appointments.push(apt);
+            return apt;
+        }
+    };
+
+    // Seed dummy reservations so the UI looks realistic
+    (() => {
+        const today = new Date();
+        for (let d = 0; d < 10; d++) {
+            const date = new Date(today);
+            date.setDate(date.getDate() + d);
+            const key = dateKey(date);
+            for (let si = 0; si < 5; si++) {
+                const booked = Math.floor(Math.random() * 6); // 0-5 slots booked
+                if (booked > 0) {
+                    DB._slotCounts.set(`${key}:${si}`, booked);
+                }
+            }
+        }
+    })();
+
+    // ===================== APP STATE =====================
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+    let selectedDate = null;
+    let selectedSession = null;
+    let currentPage = 'book';
+
+    // ===================== HELPERS =====================
+    function dateKey(d) {
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    const MONTHS_SQ = ['Janar','Shkurt','Mars','Prill','Maj','Qershor','Korrik','Gusht','Shtator','Tetor','Nëntor','Dhjetor'];
+    const DAYS_SQ = ['Dielë','Hënë','Martë','Mërkurë','Enjte','Premte','Shtunë'];
+
+    function formatDateNice(key) {
+        const [y, m, d] = key.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        return `${DAYS_SQ[date.getDay()]}, ${d} ${MONTHS_SQ[m - 1]} ${y}`;
+    }
+
+    function formatDateShort(key) {
+        const [, m, d] = key.split('-').map(Number);
+        return `${d} ${MONTHS_SQ[m - 1]}`;
+    }
+
+    function isToday(d) {
+        const t = new Date();
+        return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+    }
+
+    function isPast(d) {
+        const t = new Date(); t.setHours(0,0,0,0);
+        const dd = new Date(d); dd.setHours(0,0,0,0);
+        return dd < t;
+    }
+
+    // ===================== NAVIGATION =====================
+    function navigate(page) {
+        currentPage = page;
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active','visible'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+        const target = document.getElementById('page-' + page);
+        target.classList.add('active');
+        requestAnimationFrame(() => requestAnimationFrame(() => target.classList.add('visible')));
+        document.querySelector(`[data-nav="${page}"]`)?.classList.add('active');
+
+        if (page === 'profile') renderAppointments();
+        if (page === 'book') showStep(1);
+    }
+
+    requestAnimationFrame(() => document.getElementById('page-book').classList.add('visible'));
+
+    // ===================== CALENDAR =====================
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const title = document.getElementById('month-title');
+        title.textContent = `${MONTHS_SQ[currentMonth]} ${currentYear}`;
+        grid.innerHTML = '';
+
+        const firstDay = new Date(currentYear, currentMonth, 1);
+        let startDow = firstDay.getDay();
+        startDow = startDow === 0 ? 6 : startDow - 1;
+
+        for (let i = 0; i < startDow; i++) grid.appendChild(document.createElement('div'));
+
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const date = new Date(currentYear, currentMonth, d);
+            const key = dateKey(date);
+            const past = isPast(date);
+            const today = isToday(date);
+            const avail = DB.availableCount(key);
+            const hasSlots = avail > 0 && !past;
+            const selected = selectedDate === key;
+
+            const btn = document.createElement('button');
+            btn.className = `day-btn relative w-full aspect-square rounded-xl flex flex-col items-center justify-center text-sm font-500
+      ${past ? 'past text-warm-300' : 'text-warm-700 bg-warm-50 hover:bg-warm-100 active:scale-95'}
+      ${today ? 'ring-2 ring-honey-400 ring-offset-2 ring-offset-warm-50' : ''}
+      ${selected ? 'selected' : ''}
+      ${hasSlots && !past ? 'has-slots' : ''}`;
+            btn.innerHTML = `<span class="${today ? 'font-700' : ''}">${d}</span>`;
+
+            if (!past) btn.addEventListener('click', () => { selectedDate = key; selectedSession = null; renderCalendar(); setTimeout(() => showStep(2), 200); });
+            grid.appendChild(btn);
+        }
+    }
+
+    document.getElementById('prev-month').addEventListener('click', () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); });
+    document.getElementById('next-month').addEventListener('click', () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); });
+
+    // ===================== STEPS =====================
+    function showStep(step) {
+        const cal = document.getElementById('step-calendar');
+        const sess = document.getElementById('step-sessions');
+        const dot1 = document.getElementById('step1-dot');
+        const dot2 = document.getElementById('step2-dot');
+        const label = document.getElementById('step-label');
+
+        if (step === 1) {
+            cal.classList.remove('hidden'); sess.classList.add('hidden');
+            dot1.className = 'w-8 h-1.5 rounded-full bg-warm-900 transition-all duration-300';
+            dot2.className = 'w-8 h-1.5 rounded-full bg-warm-200 transition-all duration-300';
+            label.textContent = 'Hapi 1 — Zgjidhni ditën';
+            selectedDate = null; selectedSession = null;
+            renderCalendar();
+        } else {
+            cal.classList.add('hidden'); sess.classList.remove('hidden');
+            dot1.className = 'w-8 h-1.5 rounded-full bg-sage-500 transition-all duration-300';
+            dot2.className = 'w-8 h-1.5 rounded-full bg-warm-900 transition-all duration-300';
+            label.textContent = 'Hapi 2 — Zgjidhni orarin';
+            renderSessions();
+        }
+    }
+
+    document.getElementById('back-to-cal').addEventListener('click', () => showStep(1));
+
+    // ===================== SESSIONS =====================
+    function renderSessions() {
+        const list = document.getElementById('sessions-list');
+        const dateTitle = document.getElementById('selected-date-title');
+        const confirmWrap = document.getElementById('confirm-wrap');
+        if (!selectedDate) return;
+
+        dateTitle.textContent = formatDateNice(selectedDate);
+        list.innerHTML = '';
+        confirmWrap.classList.add('hidden');
+
+        SESSIONS.forEach((s, i) => {
+            const full = DB.isSessionFull(selectedDate, i);
+            const selected = selectedSession === i;
+            const spotsLeft = DB.SLOTS_PER_DAY - DB.reservedCountForSession(selectedDate, i);
+
+            const card = document.createElement('button');
+            card.className = `session-card w-full text-left px-4 py-4 rounded-2xl bg-white border border-warm-100 relative
+      ${full ? 'reserved' : 'hover:border-warm-300 active:scale-[0.98]'}
+      ${selected ? 'selected' : ''}`;
+
+            card.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl ${full ? 'bg-warm-200' : selected ? 'bg-honey-400/30' : 'bg-honey-50'} flex items-center justify-center transition-colors">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" class="${full ? 'text-warm-400' : selected ? 'text-honey-100' : 'text-honey-600'}"><circle cx="10" cy="10" r="8"/><path d="M10 6v4.5l3 1.5"/></svg>
+          </div>
+          <div>
+            <p class="font-600 text-[15px]">${s.start} — ${s.end}</p>
+            <p class="text-xs mt-0.5 ${full ? 'text-warm-400' : selected ? 'text-warm-300' : 'text-warm-400'}">
+              ${full ? 'Të gjitha vendet janë të zëna' : spotsLeft <= 2 ? `Vetëm ${spotsLeft} vende të lira!` : `${spotsLeft} vende të lira`} · 30 min
+            </p>
+          </div>
+        </div>
+        ${full
+                ? '<span class="flex items-center gap-1 text-xs font-500 bg-warm-200 text-warm-500 px-2.5 py-1 rounded-full"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="5"/><path d="M4 6h4"/></svg>Plot</span>'
+                : selected
+                    ? '<div class="w-7 h-7 rounded-full bg-honey-400 flex items-center justify-center"><svg width="16" height="16" fill="none" stroke="#2F2315" stroke-width="2.5"><path d="M4 8l3 3 5-6"/></svg></div>'
+                    : '<div class="w-7 h-7 rounded-full border-2 border-warm-200 transition-colors"></div>'
+            }
+      </div>`;
+
+            if (!full) card.addEventListener('click', () => { selectedSession = i; renderSessions(); });
+            list.appendChild(card);
+        });
+
+        if (selectedSession !== null) confirmWrap.classList.remove('hidden');
+    }
+
+    // ===================== BOOKING FLOW =====================
+    document.getElementById('btn-confirm').addEventListener('click', () => {
+        if (!selectedDate || selectedSession === null) return;
+        openSheet();
+    });
+
+    // Phone input
+    const phoneInput = document.getElementById('phone-input');
+    const phoneError = document.getElementById('phone-error');
+    const sheetConfirmBtn = document.getElementById('sheet-confirm-btn');
+
+    phoneInput.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/\D/g, '');
+        if (val.length > 8) val = val.slice(0, 8);
+
+        let formatted = val;
+        if (val.length > 2 && val.length <= 5) formatted = val.slice(0,2) + ' ' + val.slice(2);
+        else if (val.length > 5) formatted = val.slice(0,2) + ' ' + val.slice(2,5) + ' ' + val.slice(5);
+        e.target.value = formatted;
+
+        phoneError.classList.add('hidden');
+        phoneInput.classList.remove('error');
+        sheetConfirmBtn.disabled = val.length < 7;
+    });
+
+    sheetConfirmBtn.addEventListener('click', () => {
+        const digits = phoneInput.value.replace(/\D/g, '');
+        if (digits.length < 7) {
+            phoneError.classList.remove('hidden');
+            phoneInput.classList.add('error');
+            document.getElementById('phone-wrapper').classList.add('shake');
+            setTimeout(() => document.getElementById('phone-wrapper').classList.remove('shake'), 400);
+            return;
+        }
+
+        const apt = DB.book(selectedDate, selectedSession, digits);
+
+        closeSheet();
+        setTimeout(() => {
+            document.getElementById('success-date').textContent = formatDateNice(selectedDate);
+            document.getElementById('success-time').textContent = `${SESSIONS[selectedSession].start} — ${SESSIONS[selectedSession].end}`;
+            document.getElementById('success-phone').textContent = '+389 ' + phoneInput.value;
+            document.getElementById('success-code').textContent = apt.confirmationCode;
+            openSuccessSheet();
+
+            selectedSession = null;
+            phoneInput.value = '';
+            sheetConfirmBtn.disabled = true;
+            renderSessions();
+        }, 450);
+    });
+
+    // ===================== SHEET CONTROLS =====================
+    function openSheet() {
+        document.getElementById('overlay').classList.add('open');
+        document.getElementById('bottom-sheet').classList.add('open');
+        document.getElementById('conf-date').textContent = formatDateShort(selectedDate);
+        document.getElementById('conf-time').textContent = `${SESSIONS[selectedSession].start} — ${SESSIONS[selectedSession].end}`;
+        phoneInput.value = '';
+        sheetConfirmBtn.disabled = true;
+        phoneError.classList.add('hidden');
+        phoneInput.classList.remove('error');
+        setTimeout(() => phoneInput.focus(), 450);
+    }
+
+    function closeSheet() {
+        document.getElementById('overlay').classList.remove('open');
+        document.getElementById('bottom-sheet').classList.remove('open');
+    }
+
+    function openSuccessSheet() {
+        document.getElementById('overlay-success').classList.add('open');
+        document.getElementById('success-sheet').classList.add('open');
+    }
+
+    function closeSuccessSheet() {
+        document.getElementById('overlay-success').classList.remove('open');
+        document.getElementById('success-sheet').classList.remove('open');
+    }
+
+    document.getElementById('overlay').addEventListener('click', closeSheet);
+    document.getElementById('sheet-cancel-btn').addEventListener('click', closeSheet);
+    document.getElementById('overlay-success').addEventListener('click', closeSuccessSheet);
+    document.getElementById('success-done-btn').addEventListener('click', closeSuccessSheet);
+
+    // ===================== PROFILE =====================
+    function renderAppointments() {
+        const list = document.getElementById('appointments-list');
+        const empty = document.getElementById('no-appointments');
+
+        if (DB.appointments.length === 0) {
+            list.innerHTML = '';
+            empty.classList.remove('hidden');
+            return;
+        }
+
+        empty.classList.add('hidden');
+        const sorted = [...DB.appointments].sort((a, b) => b.date.localeCompare(a.date));
+
+        list.innerHTML = sorted.map(apt => `
+    <div class="bg-white rounded-2xl p-4 border border-warm-100 shadow-sm">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-sage-50 flex items-center justify-center shrink-0">
+          <span class="text-lg">🐝</span>
+        </div>
+        <div class="min-w-0">
+          <p class="font-500 text-sm text-warm-800">${formatDateNice(apt.date)}</p>
+          <p class="text-xs text-warm-400 mt-0.5">${apt.time} · 30 min · ${apt.phone}</p>
+        </div>
+      </div>
+      <div class="mt-3 pt-3 border-t border-warm-100 flex items-center justify-between">
+        <div>
+          <span class="text-[10px] uppercase tracking-wider text-warm-400 font-500">Numri konfirmues</span>
+          <p class="text-sm font-700 font-display text-sage-600 tracking-wide">${apt.confirmationCode}</p>
+        </div>
+        <span class="text-xs font-500 bg-sage-50 text-sage-600 px-3 py-1 rounded-full">Konfirmuar</span>
+      </div>
+    </div>
+  `).join('');
+    }
+
+    // ===================== INIT =====================
+    renderCalendar();
+</script>
+</body>
+</html>
