@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="sq" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bletaria Shqip — Ekosistemi Dixhital i Bletarisë Shqiptare</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        moonBg: '#0c0b16',
+                        moonBgAlt: '#11101e',
+                        moonYellow: '#f9e3a7',
+                        moonAmber: '#d4a84b',
+                        moonGold: '#c4943f',
+                        honeyWarm: '#e8c96d',
+                        foreground: '#f5f0e8',
+                    },
+                    fontFamily: {
+                        heading: ['"Instrument Serif"', 'Georgia', 'serif'],
+                        body: ['Barlow', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { background: #0c0b16; }
+        body { background: #0c0b16; color: #f5f0e8; overflow-x: hidden; }
+
+        .liquid-glass {
+            background: rgba(249, 227, 167, 0.03);
+            background-blend-mode: luminosity;
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(249, 227, 167, 0.1);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+            position: relative; overflow: hidden;
+        }
+        .liquid-glass::before {
+            content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.4px;
+            background: linear-gradient(180deg, rgba(249,227,167,0.3) 0%, rgba(249,227,167,0.05) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+        }
+        .liquid-glass-strong {
+            background: rgba(249, 227, 167, 0.04);
+            background-blend-mode: luminosity;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(249, 227, 167, 0.12);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 1px rgba(249,227,167,0.2);
+            position: relative; overflow: hidden;
+        }
+        .liquid-glass-strong::before {
+            content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.4px;
+            background: linear-gradient(180deg, rgba(249,227,167,0.45) 0%, rgba(249,227,167,0.08) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+        }
+
+        #flyingBee { position: fixed; z-index: 46; pointer-events: none; will-change: transform, left, top; }
+        @keyframes beeGlow {
+            0%, 100% { filter: drop-shadow(0 0 12px rgba(249,227,167,0.3)) drop-shadow(0 0 35px rgba(249,227,167,0.08)); }
+            50% { filter: drop-shadow(0 0 22px rgba(249,227,167,0.5)) drop-shadow(0 0 60px rgba(249,227,167,0.15)); }
+        }
+        #flyingBee { animation: beeGlow 2.2s ease-in-out infinite; }
+        @keyframes wingFlap {
+            0%, 100% { transform: scaleY(1) rotate(-5deg); }
+            50% { transform: scaleY(0.25) rotate(5deg); }
+        }
+        .bee-wing-l { animation: wingFlap 0.07s ease-in-out infinite; transform-origin: 60% 90%; }
+        .bee-wing-r { animation: wingFlap 0.07s ease-in-out infinite 0.035s; transform-origin: 40% 90%; }
+
+        .honey-particle { position: fixed; width: 5px; height: 5px; background: radial-gradient(circle, #f9e3a7, #d4a84b); border-radius: 50%; pointer-events: none; z-index: 44; opacity: 0; }
+        .bee-trail-dot { position: fixed; width: 3px; height: 3px; background: rgba(249,227,167,0.15); border-radius: 50%; pointer-events: none; z-index: 43; opacity: 0; }
+
+        .hero-gradient-orb { position: absolute; border-radius: 50%; filter: blur(80px); will-change: transform; }
+        .honeycomb-bg {
+            position: absolute; inset: 0; opacity: 0.02; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100' fill='none' stroke='%23f9e3a7' stroke-width='0.8'/%3E%3Cpath d='M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34' fill='none' stroke='%23f9e3a7' stroke-width='0.8'/%3E%3C/svg%3E");
+            background-size: 56px 100px;
+        }
+
+        .gsap-reveal,
+        .gsap-reveal-left,
+        .gsap-reveal-right,
+        .gsap-reveal-scale {
+            opacity: 0;
+        }
+
+        .app-card { transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.45s ease, border-color 0.45s ease; }
+        .app-card:hover { transform: translateY(-8px) scale(1.01); box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 1px 2px rgba(249,227,167,0.3); border-color: rgba(249,227,167,0.25); }
+        .app-card:hover .card-cta { color: #f9e3a7; }
+        .app-card:hover .card-icon-ring { box-shadow: 0 0 30px rgba(249,227,167,0.2); border-color: rgba(249,227,167,0.35); }
+
+        .feature-visual { background: linear-gradient(145deg, rgba(249,227,167,0.03), rgba(249,227,167,0.008)); border: 1px solid rgba(249,227,167,0.06); position: relative; overflow: hidden; }
+        .feature-visual::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, rgba(249,227,167,0.04) 0%, transparent 70%); }
+
+        .stat-value { background: linear-gradient(180deg, #f9e3a7 20%, #d4a84b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+        .nav-link { position: relative; transition: color 0.3s ease; }
+        .nav-link::after { content: ''; position: absolute; bottom: -3px; left: 50%; width: 0; height: 1.5px; background: #f9e3a7; transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1); transform: translateX(-50%); border-radius: 1px; }
+        .nav-link:hover { color: #f9e3a7; }
+        .nav-link:hover::after { width: 100%; }
+
+        .mobile-menu { transform: translateY(-16px); opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+        .mobile-menu.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+        .section-glow { position: absolute; left: 50%; transform: translateX(-50%); width: 300px; height: 1px; background: linear-gradient(90deg, transparent, rgba(249,227,167,0.2), transparent); }
+
+        /* Inline SVG icon sizing */
+        .icon { display: inline-block; vertical-align: middle; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0c0b16; }
+        ::-webkit-scrollbar-thumb { background: rgba(249,227,167,0.15); border-radius: 3px; }
+    </style>
+</head>
+
+<body class="font-body antialiased">
+
+<!-- ═══════ BEE SVG ═══════ -->
+<svg id="flyingBee" width="52" height="52" viewBox="0 0 52 52" style="left:-100px; top:-100px;">
+    <ellipse class="bee-wing-l" cx="17" cy="16" rx="10" ry="5.5" fill="rgba(249,227,167,0.22)" stroke="rgba(249,227,167,0.28)" stroke-width="0.5" transform="rotate(-30 17 16)"/>
+    <ellipse class="bee-wing-r" cx="35" cy="16" rx="10" ry="5.5" fill="rgba(249,227,167,0.22)" stroke="rgba(249,227,167,0.28)" stroke-width="0.5" transform="rotate(30 35 16)"/>
+    <ellipse cx="26" cy="26" rx="9" ry="11" fill="#d4a84b"/>
+    <rect x="17" y="21" width="18" height="3" rx="1.5" fill="#1a1520" opacity="0.55"/>
+    <rect x="17" y="27" width="18" height="3" rx="1.5" fill="#1a1520" opacity="0.55"/>
+    <circle cx="26" cy="14" r="5.5" fill="#c4943f"/>
+    <circle cx="23.5" cy="13" r="1.6" fill="#0c0b16"/>
+    <circle cx="28.5" cy="13" r="1.6" fill="#0c0b16"/>
+    <line x1="22" y1="9" x2="18" y2="3" stroke="#c4943f" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="18" cy="3" r="1.4" fill="#f9e3a7"/>
+    <line x1="30" y1="9" x2="34" y2="3" stroke="#c4943f" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="34" cy="3" r="1.4" fill="#f9e3a7"/>
+    <polygon points="26,37 23.5,41 28.5,41" fill="#c4943f"/>
+</svg>
+<div id="particlePool"></div>
+
+
+<!-- ═══════════════════ NAVBAR ═══════════════════ -->
+<nav id="navbar" class="fixed top-4 left-4 right-4 z-50 transition-all duration-500">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-5 py-3 liquid-glass rounded-2xl">
+        <a href="#" class="flex items-center gap-2.5 min-h-[48px] min-w-[48px]">
+            <!-- Hexagon icon -->
+            <svg class="icon w-7 h-7 text-moonYellow" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <span class="font-heading italic text-moonYellow text-xl tracking-tight">Bletaria Shqip</span>
+        </a>
+        <div class="hidden md:flex items-center liquid-glass rounded-full px-2 py-1.5">
+            <a href="#ecosystem" class="nav-link font-body font-normal text-white/75 text-[15px] px-5 py-2.5 min-h-[48px] flex items-center">Ekosistemi</a>
+            <a href="#features" class="nav-link font-body font-normal text-white/75 text-[15px] px-5 py-2.5 min-h-[48px] flex items-center">Veçoritë</a>
+            <a href="#impact" class="nav-link font-body font-normal text-white/75 text-[15px] px-5 py-2.5 min-h-[48px] flex items-center">Ndikimi</a>
+        </div>
+        <a href="#cta" class="hidden md:flex items-center bg-moonYellow text-moonBg font-body font-semibold text-[15px] px-6 py-3 rounded-full min-h-[48px] transition-transform active:scale-95 hover:bg-honeyWarm">
+            Hyr në Portal
+        </a>
+        <button id="mobileToggle" class="md:hidden flex items-center justify-center w-12 h-12 rounded-full liquid-glass" aria-label="Hap menunë">
+            <!-- Menu icon -->
+            <svg class="icon w-5 h-5 text-moonYellow" viewBox="0 0 24 24"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div id="mobileMenu" class="mobile-menu md:hidden mt-2 mx-auto max-w-7xl liquid-glass-strong rounded-2xl p-4">
+        <a href="#ecosystem" class="block font-body text-white/80 text-base py-3 px-4 rounded-xl hover:bg-moonYellow/10 min-h-[48px] flex items-center">Ekosistemi</a>
+        <a href="#features" class="block font-body text-white/80 text-base py-3 px-4 rounded-xl hover:bg-moonYellow/10 min-h-[48px] flex items-center">Veçoritë</a>
+        <a href="#impact" class="block font-body text-white/80 text-base py-3 px-4 rounded-xl hover:bg-moonYellow/10 min-h-[48px] flex items-center">Ndikimi</a>
+        <a href="#cta" class="block text-center bg-moonYellow text-moonBg font-body font-semibold py-3 px-4 rounded-full mt-3 min-h-[48px] flex items-center justify-center">Hyr në Portal</a>
+    </div>
+</nav>
+
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden bg-moonBg">
+    <div class="honeycomb-bg"></div>
+    <div class="hero-gradient-orb w-[500px] h-[500px] bg-moonYellow/[0.07] top-[10%] left-[15%]" id="orb1"></div>
+    <div class="hero-gradient-orb w-[400px] h-[400px] bg-moonAmber/[0.05] top-[40%] right-[10%]" id="orb2"></div>
+    <div class="hero-gradient-orb w-[600px] h-[600px] bg-moonGold/[0.04] bottom-[5%] left-[40%]" id="orb3"></div>
+    <div class="absolute bottom-0 left-0 right-0 z-[1] h-[350px]" style="background: linear-gradient(to bottom, transparent, #0c0b16);"></div>
+
+    <div class="relative z-10 max-w-4xl mx-auto px-6 pt-32 pb-24 text-center">
+        <div class="gsap-reveal inline-flex items-center gap-2.5 liquid-glass rounded-full px-1.5 py-1.5 pr-5 mb-8">
+            <span class="bg-moonYellow text-moonBg font-body font-semibold text-xs uppercase tracking-wider px-3 py-1.5 rounded-full">Ekosistem</span>
+            <span class="font-body font-light text-white/75 text-sm">E ardhmja e bletarisë.</span>
+        </div>
+        <h1 id="heroHeading" class="font-heading italic text-foreground text-5xl md:text-7xl lg:text-8xl tracking-tight leading-[0.9] mb-7">
+            <span class="hero-word inline-block">Ekosistemi</span> <span class="hero-word inline-block">që</span> <span class="hero-word inline-block">bletët</span> <span class="hero-word inline-block">tuaja</span> <span class="hero-word inline-block">meritojnë.</span>
+        </h1>
+        <p class="gsap-reveal font-body font-light text-white/70 text-base md:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+            Menaxhim i plotë i bletoreve. Treg i pastër mjalti. Apiterapi holistike. Rrjeti përfundimtar dixhital për bletarinë shqiptare.
+        </p>
+        <div class="gsap-reveal flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href="#ecosystem" class="liquid-glass-strong rounded-full font-body font-medium text-foreground text-[15px] px-8 py-4 min-h-[48px] flex items-center gap-2 transition-transform active:scale-95 hover:border-moonYellow/30">
+                <!-- Compass icon -->
+                <svg class="icon w-4 h-4 text-moonYellow" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                Eksploro Aplikacionet
+            </a>
+            <a href="#cta" class="bg-moonYellow text-moonBg font-body font-semibold text-[15px] px-8 py-4 rounded-full min-h-[48px] flex items-center gap-2 transition-transform active:scale-95 hover:bg-honeyWarm">
+                Bashkohu në Rrjet
+                <!-- Arrow right -->
+                <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </a>
+        </div>
+    </div>
+
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 gsap-reveal">
+        <span class="font-body text-white/30 text-xs uppercase tracking-widest">Lëviz poshtë</span>
+        <div class="w-5 h-8 rounded-full border border-moonYellow/20 flex items-start justify-center p-1.5">
+            <div class="w-1 h-2 bg-moonYellow/50 rounded-full" id="scrollDot"></div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════ ECOSYSTEM ═══════════════════ -->
+<section id="ecosystem" class="relative py-28 bg-moonBg overflow-hidden">
+    <div class="section-glow top-0"></div>
+    <div class="honeycomb-bg"></div>
+    <div class="relative z-10 max-w-7xl mx-auto px-6">
+        <div class="text-center mb-20">
+            <div class="gsap-reveal inline-flex items-center liquid-glass rounded-full px-4 py-2 mb-6">
+                <span class="font-body font-medium text-moonYellow text-xs uppercase tracking-widest">Platformat Tona</span>
+            </div>
+            <h2 class="gsap-reveal font-heading italic text-foreground text-4xl md:text-6xl lg:text-7xl tracking-tight leading-[0.9]">
+                Një rrjet. Tre zgjidhje.
+            </h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
+            <!-- Card 1 — Apiary -->
+            <div class="app-card liquid-glass-strong rounded-3xl p-8 lg:p-10 flex flex-col gsap-reveal-left">
+                <div class="card-icon-ring w-16 h-16 rounded-2xl border border-moonYellow/15 bg-moonYellow/[0.06] flex items-center justify-center mb-7 transition-all duration-500">
+                    <!-- Database icon -->
+                    <svg class="icon w-7 h-7 text-moonYellow" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+                </div>
+                <h3 class="font-heading italic text-foreground text-2xl md:text-3xl tracking-tight leading-[0.95] mb-4">Menaxhimi i Bletoreve</h3>
+                <p class="font-body font-light text-white/70 text-[15px] leading-relaxed mb-8 flex-1">Monitoroni shëndetin e zgjojeve, gjurmoni vendndodhjen e parkut dhe gjeneroni raporte në kohë reale për bletoret tuaja.</p>
+                <a href="#" class="card-cta inline-flex items-center gap-2 font-body font-medium text-white/60 text-[15px] min-h-[48px] transition-colors duration-300">
+                    Menaxho Zgjojet
+                    <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+            </div>
+            <!-- Card 2 — Marketplace -->
+            <div class="app-card liquid-glass-strong rounded-3xl p-8 lg:p-10 flex flex-col gsap-reveal">
+                <div class="card-icon-ring w-16 h-16 rounded-2xl border border-moonYellow/15 bg-moonYellow/[0.06] flex items-center justify-center mb-7 transition-all duration-500">
+                    <!-- Shopping bag icon -->
+                    <svg class="icon w-7 h-7 text-moonYellow" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
+                <h3 class="font-heading italic text-foreground text-2xl md:text-3xl tracking-tight leading-[0.95] mb-4">Tregu Premium i Mjaltit</h3>
+                <p class="font-body font-light text-white/70 text-[15px] leading-relaxed mb-8 flex-1">Lidhuni direkt me blerësit. Shisni mjaltin e pastër, të gjurmueshem shqiptar me transparencë të plotë.</p>
+                <a href="#" class="card-cta inline-flex items-center gap-2 font-body font-medium text-white/60 text-[15px] min-h-[48px] transition-colors duration-300">
+                    Hyr në Treg
+                    <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+            </div>
+            <!-- Card 3 — Apitherapy -->
+            <div class="app-card liquid-glass-strong rounded-3xl p-8 lg:p-10 flex flex-col gsap-reveal-right">
+                <div class="card-icon-ring w-16 h-16 rounded-2xl border border-moonYellow/15 bg-moonYellow/[0.06] flex items-center justify-center mb-7 transition-all duration-500">
+                    <!-- Heart pulse icon -->
+                    <svg class="icon w-7 h-7 text-moonYellow" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>
+                </div>
+                <h3 class="font-heading italic text-foreground text-2xl md:text-3xl tracking-tight leading-[0.95] mb-4">Rezervimi i Apiterapisë</h3>
+                <p class="font-body font-light text-white/70 text-[15px] leading-relaxed mb-8 flex-1">Rezervime pa probleme për seanca mirëqenieje holistike dhe apiterapi në parqe të certifikuara.</p>
+                <a href="#" class="card-cta inline-flex items-center gap-2 font-body font-medium text-white/60 text-[15px] min-h-[48px] transition-colors duration-300">
+                    Rezervo Seancën
+                    <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════ FEATURES ═══════════════════ -->
+<section id="features" class="relative py-28 bg-moonBg overflow-hidden">
+    <div class="section-glow top-0"></div>
+    <div class="relative z-10 max-w-7xl mx-auto px-6">
+        <div class="text-center mb-20">
+            <div class="gsap-reveal inline-flex items-center liquid-glass rounded-full px-4 py-2 mb-6">
+                <span class="font-body font-medium text-moonYellow text-xs uppercase tracking-widest">Aftësitë</span>
+            </div>
+            <h2 class="gsap-reveal font-heading italic text-foreground text-4xl md:text-6xl lg:text-7xl tracking-tight leading-[0.9]">
+                Ndërtuar për bletarë.<br>Dizajnuar për rritje.
+            </h2>
+        </div>
+
+        <!-- Row 1 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-28">
+            <div class="gsap-reveal-left">
+                <h3 class="font-heading italic text-foreground text-3xl md:text-5xl tracking-tight leading-[0.9] mb-6">Gjurmueshmëri nga zgoja në shtëpi.</h3>
+                <p class="font-body font-light text-white/70 text-[15px] md:text-base leading-relaxed mb-8 max-w-lg">Çdo kavanoz tregon një histori. Aplikacioni ynë i menaxhimit regjistron të dhëna në kohë reale nga parqet e klientëve, duke siguruar kontroll absolut të cilësisë.</p>
+                <a href="#" class="liquid-glass-strong rounded-full font-body font-medium text-foreground text-[15px] px-7 py-3.5 min-h-[48px] inline-flex items-center gap-2 transition-transform active:scale-95">
+                    Shiko Gjurmimin
+                    <svg class="icon w-4 h-4 text-moonYellow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+            </div>
+            <div class="gsap-reveal-right feature-visual rounded-3xl h-72 lg:h-[420px] flex items-center justify-center">
+                <div class="relative z-10 text-center">
+                    <!-- Scan line icon -->
+                    <svg class="icon w-14 h-14 text-moonYellow/30 mx-auto mb-4" viewBox="0 0 24 24"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2"/><path d="M2 16v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2"/><path d="M2 12h20"/></svg>
+                    <span class="font-body text-white/25 text-sm">Pamje e ndërfaqes së gjurmimit</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div class="gsap-reveal-left feature-visual rounded-3xl h-72 lg:h-[420px] flex items-center justify-center order-2 lg:order-1">
+                <div class="relative z-10 text-center">
+                    <!-- Monitor smartphone icon -->
+                    <svg class="icon w-14 h-14 text-moonYellow/30 mx-auto mb-4" viewBox="0 0 24 24"><rect width="14" height="10" x="2" y="3" rx="2"/><rect width="5" height="8" x="17" y="8" rx="1"/><path d="M2 13h14"/></svg>
+                    <span class="font-body text-white/25 text-sm">Pamje e ndërfaqes intuitive</span>
+                </div>
+            </div>
+            <div class="gsap-reveal-right order-1 lg:order-2">
+                <h3 class="font-heading italic text-foreground text-3xl md:text-5xl tracking-tight leading-[0.9] mb-6">Intuitive në çdo moshë.</h3>
+                <p class="font-body font-light text-white/70 text-[15px] md:text-base leading-relaxed mb-8 max-w-lg">Dizajnuar me qartësi absolute. Ndërfaqe të mëdha, pamje me kontrast të lartë, dhe rrjedha pune pa probleme — që ju të përqendroheni tek bletët, jo tek ekrani.</p>
+                <a href="#" class="liquid-glass-strong rounded-full font-body font-medium text-foreground text-[15px] px-7 py-3.5 min-h-[48px] inline-flex items-center gap-2 transition-transform active:scale-95">
+                    Shiko Ndërfaqen
+                    <svg class="icon w-4 h-4 text-moonYellow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════ STATS ═══════════════════ -->
+<section id="impact" class="relative py-28 bg-moonBg overflow-hidden">
+    <div class="section-glow top-0"></div>
+    <div class="honeycomb-bg"></div>
+    <div class="relative z-10 max-w-5xl mx-auto px-6">
+        <div class="gsap-reveal-scale liquid-glass rounded-[2rem] p-10 md:p-16">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-10 text-center">
+                <div class="stat-item">
+                    <div class="stat-value text-5xl md:text-6xl font-heading italic mb-2" data-count="50" data-suffix="+">0</div>
+                    <div class="font-body font-light text-white/65 text-[15px]">Parqe Aktive</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value text-5xl md:text-6xl font-heading italic mb-2" data-count="10" data-suffix="k+">0</div>
+                    <div class="font-body font-light text-white/65 text-[15px]">Zgjojet e Monitoruara</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value text-5xl md:text-6xl font-heading italic mb-2" data-count="100" data-suffix="%">0</div>
+                    <div class="font-body font-light text-white/65 text-[15px]">Mjaltë e Gjurmueshem</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value text-5xl md:text-6xl font-heading italic mb-2" data-count="3" data-suffix="">0</div>
+                    <div class="font-body font-light text-white/65 text-[15px]">Platforma, Një Ekosistem</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════ CTA ═══════════════════ -->
+<section id="cta" class="relative py-36 bg-moonBg overflow-hidden">
+    <div class="section-glow top-0"></div>
+    <div class="hero-gradient-orb w-[500px] h-[500px] bg-moonYellow/[0.05] top-[20%] left-[20%]" style="position:absolute; filter:blur(100px);"></div>
+    <div class="hero-gradient-orb w-[400px] h-[400px] bg-moonAmber/[0.04] bottom-[10%] right-[15%]" style="position:absolute; filter:blur(100px);"></div>
+    <div class="relative z-10 max-w-3xl mx-auto px-6 text-center">
+        <h2 class="gsap-reveal font-heading italic text-foreground text-4xl md:text-6xl lg:text-7xl tracking-tight leading-[0.9] mb-6">
+            Gati të ngrini bletoren tuaj?
+        </h2>
+        <p class="gsap-reveal font-body font-light text-white/60 text-base md:text-lg mb-12">
+            Bashkohuni në ekosistemën Bletaria Shqip sot.
+        </p>
+        <div class="gsap-reveal">
+            <a href="#" class="inline-flex items-center bg-moonYellow text-moonBg font-body font-semibold text-base md:text-lg px-10 py-5 rounded-full min-h-[56px] transition-transform active:scale-95 hover:bg-honeyWarm gap-2.5 shadow-lg shadow-moonYellow/10">
+                Krijo Llogari Falas
+                <svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </a>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer class="relative bg-moonBg border-t border-moonYellow/[0.07]">
+    <div class="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-2.5">
+            <svg class="icon w-5 h-5 text-moonYellow/40" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <span class="font-body font-light text-white/40 text-sm">© 2026 Bletaria Shqip. Të gjitha të drejtat e rezervuara.</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <a href="#" class="font-body text-white/40 text-sm hover:text-moonYellow transition-colors min-h-[48px] flex items-center">Privatësia</a>
+            <a href="#" class="font-body text-white/40 text-sm hover:text-moonYellow transition-colors min-h-[48px] flex items-center">Kushtet</a>
+            <a href="#" class="font-body text-white/40 text-sm hover:text-moonYellow transition-colors min-h-[48px] flex items-center">Kontakti</a>
+        </div>
+    </div>
+</footer>
+
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- GSAP ANIMATIONS + BEE SCROLL FLIGHT                -->
+<!-- ═══════════════════════════════════════════════════ -->
+<script>
+    window.addEventListener('load', function() {
+        'use strict';
+
+        gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+
+        // ── Mobile Menu ──
+        const mobileToggle = document.getElementById('mobileToggle');
+        const mobileMenu = document.getElementById('mobileMenu');
+        mobileToggle.addEventListener('click', () => mobileMenu.classList.toggle('open'));
+        mobileMenu.querySelectorAll('a').forEach(l => l.addEventListener('click', () => mobileMenu.classList.remove('open')));
+
+        // ── Smooth Scroll ──
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', function(e) {
+                const t = document.querySelector(this.getAttribute('href'));
+                if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            });
+        });
+
+        // ── Hero Orbs ──
+        gsap.to('#orb1', { x: 60, y: -40, duration: 8, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+        gsap.to('#orb2', { x: -50, y: 50, duration: 10, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+        gsap.to('#orb3', { x: 40, y: -60, duration: 12, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+
+        // ── Scroll dot ──
+        gsap.to('#scrollDot', { y: 8, duration: 1.2, repeat: -1, yoyo: true, ease: 'power1.inOut' });
+
+        // ── Hero Words Stagger ──
+        gsap.from('.hero-word', {
+            opacity: 0, y: 50, filter: 'blur(14px)',
+            duration: 1, stagger: 0.13, ease: 'power3.out', delay: 0.35
+        });
+
+        // ── ScrollTrigger reveals ──
+        function initRevealAnimations() {
+            const configs = [
+                { sel: '.gsap-reveal', vars: { y: 60 } },
+                { sel: '.gsap-reveal-left', vars: { x: -80 } },
+                { sel: '.gsap-reveal-right', vars: { x: 80 } },
+                { sel: '.gsap-reveal-scale', vars: { scale: 0.88 } },
+            ];
+
+            configs.forEach(cfg => {
+                gsap.utils.toArray(cfg.sel).forEach(el => {
+                    gsap.fromTo(
+                        el,
+                        { opacity: 0, ...cfg.vars },
+                        {
+                            opacity: 1,
+                            x: 0,
+                            y: 0,
+                            scale: 1,
+                            duration: 1,
+                            ease: 'power3.out',
+                            scrollTrigger: {
+                                trigger: el,
+                                start: 'top 85%',
+                                once: true,
+                                invalidateOnRefresh: true
+                            }
+                        }
+                    );
+                });
+            });
+        }
+
+        // ── Card Stagger ──
+        gsap.utils.toArray('.app-card').forEach((card) => {
+            gsap.from(card, {
+                opacity: 0,
+                y: 50,
+                scale: 0.95,
+                duration: 0.85,
+                ease: 'power3.out',
+                scrollTrigger: {
+                    trigger: card,
+                    start: 'top 85%',
+                    once: true
+                }
+            });
+        });
+
+        // ── Stat Counters ──
+        document.querySelectorAll('.stat-value').forEach(el => {
+            const target = parseInt(el.dataset.count);
+            const suffix = el.dataset.suffix || '';
+            ScrollTrigger.create({
+                trigger: el, start: 'top 85%', once: true,
+                onEnter: () => {
+                    gsap.to({ val: 0 }, {
+                        val: target, duration: 2.2, ease: 'power2.out',
+                        onUpdate: function() { el.textContent = Math.round(this.targets()[0].val) + suffix; }
+                    });
+                }
+            });
+        });
+
+        // ── Stat Items Stagger ──
+        ScrollTrigger.create({
+            trigger: '.stat-item', start: 'top 82%', once: true,
+            onEnter: () => gsap.from('.stat-item', { opacity: 0, y: 30, scale: 0.9, duration: 0.7, stagger: 0.1, ease: 'back.out(1.4)' })
+        });
+
+        // ── Parallax ──
+        gsap.utils.toArray('.honeycomb-bg').forEach(bg => {
+            gsap.to(bg, { scrollTrigger: { trigger: bg.parentElement, start: 'top bottom', end: 'bottom top', scrub: 1 }, y: -80, ease: 'none' });
+        });
+        gsap.utils.toArray('.feature-visual').forEach(v => {
+            gsap.to(v, { scrollTrigger: { trigger: v, start: 'top bottom', end: 'bottom top', scrub: 1 }, y: -40, ease: 'none' });
+        });
+
+        // ── Navbar ──
+        ScrollTrigger.create({
+            start: 60,
+            onUpdate: () => { document.getElementById('navbar').style.top = window.scrollY > 60 ? '6px' : '16px'; }
+        });
+
+
+        // ════════════════════════════════════════════════
+        //   BEE SCROLL-DRIVEN FLIGHT
+        // ════════════════════════════════════════════════
+
+        const bee = document.getElementById('flyingBee');
+        const particlePool = document.getElementById('particlePool');
+        const honeyParticles = [];
+        for (let i = 0; i < 30; i++) {
+            const p = document.createElement('div');
+            p.className = 'honey-particle';
+            particlePool.appendChild(p);
+            honeyParticles.push(p);
+        }
+        const trailDots = [];
+        for (let i = 0; i < 50; i++) {
+            const d = document.createElement('div');
+            d.className = 'bee-trail-dot';
+            particlePool.appendChild(d);
+            trailDots.push(d);
+        }
+        let pIdx = 0, tIdx = 0;
+
+        const waypoints = [
+            { x: -6, y: 45, p: 0 }, { x: 20, y: 30, p: 0.03 }, { x: 50, y: 55, p: 0.06 },
+            { x: 82, y: 28, p: 0.10 }, { x: 65, y: 60, p: 0.14 }, { x: 35, y: 38, p: 0.18 },
+            { x: 12, y: 42, p: 0.22 }, { x: 50, y: 30, p: 0.27 }, { x: 88, y: 48, p: 0.32 },
+            { x: 72, y: 62, p: 0.36 }, { x: 38, y: 35, p: 0.40 }, { x: 8, y: 50, p: 0.44 },
+            { x: 30, y: 32, p: 0.48 }, { x: 68, y: 58, p: 0.52 }, { x: 92, y: 38, p: 0.56 },
+            { x: 70, y: 48, p: 0.60 }, { x: 42, y: 32, p: 0.64 }, { x: 18, y: 52, p: 0.68 },
+            { x: 52, y: 28, p: 0.72 }, { x: 82, y: 50, p: 0.76 }, { x: 62, y: 58, p: 0.80 },
+            { x: 38, y: 36, p: 0.84 }, { x: 50, y: 30, p: 0.88 }, { x: 68, y: 50, p: 0.92 },
+            { x: 88, y: 42, p: 0.96 }, { x: 108, y: 38, p: 1.00 },
+        ];
+
+        function lerpWaypoint(progress) {
+            let i = 0;
+            for (; i < waypoints.length - 1; i++) { if (progress <= waypoints[i + 1].p) break; }
+            if (i >= waypoints.length - 1) i = waypoints.length - 2;
+            const a = waypoints[i], b = waypoints[i + 1];
+            const range = b.p - a.p;
+            const t = range > 0 ? Math.max(0, Math.min(1, (progress - a.p) / range)) : 0;
+            const s = t * t * (3 - 2 * t);
+            return { x: a.x + (b.x - a.x) * s, y: a.y + (b.y - a.y) * s };
+        }
+
+        function spawnParticle(px, py) {
+            const p = honeyParticles[pIdx++ % honeyParticles.length];
+            gsap.killTweensOf(p);
+            gsap.set(p, { left: px, top: py, opacity: 0.6, scale: 1, x: 0, y: 0 });
+            gsap.to(p, { opacity: 0, scale: 0.15, y: gsap.utils.random(25, 55), x: gsap.utils.random(-20, 20), duration: gsap.utils.random(0.9, 1.8), ease: 'power2.out' });
+        }
+        function spawnTrail(px, py) {
+            const d = trailDots[tIdx++ % trailDots.length];
+            gsap.killTweensOf(d);
+            gsap.set(d, { left: px, top: py, opacity: 0.2, scale: 1 });
+            gsap.to(d, { opacity: 0, scale: 0.3, duration: 2.5, ease: 'power1.out' });
+        }
+
+        let prevBeeX = 0, lastPS = 0, lastTS = 0;
+        let beeWiggle = 0;
+        function wiggle() { beeWiggle = Math.sin(Date.now() * 0.003) * 6; requestAnimationFrame(wiggle); }
+        wiggle();
+
+        function updateBee() {
+            const scrollY = window.scrollY;
+            const totalH = document.body.scrollHeight - window.innerHeight;
+            const progress = totalH > 0 ? Math.min(scrollY / totalH, 1) : 0;
+            const pos = lerpWaypoint(progress);
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const bx = (pos.x / 100) * vw, by = (pos.y / 100) * vh + beeWiggle;
+
+            bee.style.left = (bx - 26) + 'px';
+            bee.style.top = (by - 26) + 'px';
+            if (bx < prevBeeX - 0.5) bee.style.transform = 'scaleX(-1)';
+            else if (bx > prevBeeX + 0.5) bee.style.transform = 'scaleX(1)';
+            prevBeeX = bx;
+
+            if (Math.abs(scrollY - lastPS) > 25) { spawnParticle(bx, by); lastPS = scrollY; }
+            if (Math.abs(scrollY - lastTS) > 12) { spawnTrail(bx, by); lastTS = scrollY; }
+        }
+
+        let ticking = false;
+        window.addEventListener('scroll', () => {
+            if (!ticking) { requestAnimationFrame(() => { updateBee(); ticking = false; }); ticking = true; }
+        }, { passive: true });
+
+        function idleLoop() { updateBee(); requestAnimationFrame(idleLoop); }
+        idleLoop();
+
+        initRevealAnimations();
+
+        ScrollTrigger.refresh();
+    });
+</script>
+
+</body>
+</html>
