@@ -122,6 +122,15 @@
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #0c0b16; }
         ::-webkit-scrollbar-thumb { background: rgba(249,227,167,0.15); border-radius: 3px; }
+
+        @keyframes soundPulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.5); opacity: 0.6; }
+        }
+
+        #audioPrompt .blur-xl {
+            animation: soundPulse 2s ease-in-out infinite;
+        }
     </style>
 </head>
 
@@ -396,6 +405,26 @@
     </div>
 </footer>
 
+<!-- Audio unlock prompt - redesigned smaller and rounder -->
+<div id="audioPrompt" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 opacity-0 pointer-events-none transition-all duration-500">
+    <button onclick="document.dispatchEvent(new Event('click'))" class="liquid-glass rounded-full px-5 py-3 flex items-center gap-3 shadow-2xl hover:scale-105 transition-transform active:scale-95">
+        <div class="relative flex items-center justify-center">
+            <!-- Pulsing glow -->
+            <div class="absolute inset-0 bg-moonYellow/30 rounded-full blur-lg"></div>
+            <!-- Speaker icon -->
+            <svg class="icon w-5 h-5 text-moonYellow relative z-10" viewBox="0 0 24 24">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+        </div>
+        <span class="font-body font-medium text-foreground text-xs whitespace-nowrap">Lësho zërin e bletës?</span>
+    </button>
+</div>
+
+
+<audio id="beeSound" loop preload="auto">
+    <source src="./bee-buzzing.mp3" type="audio/mpeg">
+</audio>
 
 <!-- ═══════════════════════════════════════════════════ -->
 <!-- GSAP ANIMATIONS + BEE SCROLL FLIGHT                -->
@@ -418,6 +447,83 @@
                 const t = document.querySelector(this.getAttribute('href'));
                 if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
             });
+        });
+
+        const beeSound = document.getElementById('beeSound');
+
+        let audioUnlocked = false;
+        let isPlaying = false;
+        let currentFadeAnimation = null;
+
+        // Smooth volume control
+        function fadeAudio(targetVolume, duration = 400) {
+            if (!audioUnlocked) return;
+
+            // Cancel any ongoing fade
+            if (currentFadeAnimation) {
+                cancelAnimationFrame(currentFadeAnimation);
+            }
+
+            // Clamp target volume before starting
+            targetVolume = Math.max(0, Math.min(1, targetVolume));
+
+            const startVolume = beeSound.volume;
+            const diff = targetVolume - startVolume;
+            const startTime = performance.now();
+
+            function animate(time) {
+                const progress = Math.min((time - startTime) / duration, 1);
+                const newVolume = startVolume + diff * progress;
+
+                // Clamp the interpolated volume to ensure it stays within [0, 1]
+                beeSound.volume = Math.max(0, Math.min(1, newVolume));
+
+                if (progress < 1) {
+                    currentFadeAnimation = requestAnimationFrame(animate);
+                } else {
+                    currentFadeAnimation = null;
+                }
+            }
+
+            currentFadeAnimation = requestAnimationFrame(animate);
+        }
+
+        // Show audio prompt when bee enters screen
+        function showAudioPrompt() {
+            const prompt = document.getElementById('audioPrompt');
+            if (!audioUnlocked && prompt) {
+                prompt.style.opacity = '1';
+                prompt.style.pointerEvents = 'auto';
+            }
+        }
+
+        function hideAudioPrompt() {
+            const prompt = document.getElementById('audioPrompt');
+            if (prompt) {
+                prompt.style.opacity = '0';
+                prompt.style.pointerEvents = 'none';
+            }
+        }
+
+        function unlockAudio() {
+            if (!audioUnlocked) {
+                console.log('🔓 Unlocking audio...');
+                hideAudioPrompt(); // Hide the prompt
+                beeSound.volume = 0;
+                beeSound.loop = true;
+                beeSound.play().then(() => {
+                    audioUnlocked = true;
+                    console.log('✅ Audio unlocked! Will now play/pause based on bee visibility');
+                    updateBee();
+                }).catch(err => {
+                    console.error('❌ Audio unlock failed:', err);
+                });
+            }
+        }
+
+        // Only use genuine user interactions (NOT scroll)
+        ['click', 'touchstart', 'keydown'].forEach(event => {
+            document.addEventListener(event, unlockAudio, { once: true });
         });
 
         // ── Hero Orbs ──
@@ -595,6 +701,44 @@
             if (bx < prevBeeX - 0.5) bee.style.transform = 'scaleX(-1)';
             else if (bx > prevBeeX + 0.5) bee.style.transform = 'scaleX(1)';
             prevBeeX = bx;
+
+            // Check if bee is visible on screen
+            const beeVisible = bx >= -52 && bx <= vw + 52 && by >= -52 && by <= vh + 52;
+
+            // Show/hide prompt based on bee visibility and audio state
+            if (beeVisible && !audioUnlocked) {
+                showAudioPrompt();
+            } else {
+                hideAudioPrompt();
+            }
+
+            // Control audio based on bee visibility
+            if (audioUnlocked) {
+                if (beeVisible) {
+                    // Bee is on screen - play sound
+                    if (beeSound.paused) {
+                        beeSound.play().catch(() => {});
+                        console.log('🐝 Bee entered screen - sound ON');
+                    }
+
+                    // Calculate volume based on position
+                    const centerX = vw / 2;
+                    const distance = Math.abs(bx - centerX);
+                    const maxDistance = centerX;
+                    const normalized = Math.max(0, Math.min(1, 1 - distance / maxDistance));
+                    let dynamicVolume = 0.05 + normalized * 0.15;
+                    dynamicVolume = Math.max(0, Math.min(1, dynamicVolume));
+
+                    fadeAudio(dynamicVolume, 200);
+                } else {
+                    // Bee is off screen - stop sound immediately
+                    if (!beeSound.paused) {
+                        beeSound.pause();
+                        beeSound.currentTime = 0;
+                        console.log('🐝 Bee left screen - sound OFF');
+                    }
+                }
+            }
 
             if (Math.abs(scrollY - lastPS) > 25) { spawnParticle(bx, by); lastPS = scrollY; }
             if (Math.abs(scrollY - lastTS) > 12) { spawnTrail(bx, by); lastTS = scrollY; }
